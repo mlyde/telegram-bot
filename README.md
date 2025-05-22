@@ -1,2 +1,8 @@
 # telegram-bot
-Anti-Spam for telegram group.
+
+1. 对入群成员的名字, 简介等进行屏蔽词检测.
+2. 对群内消息进行屏蔽词检测.
+
+Bug:
+未知原因Timeout, 需要不定时手动重启.
+
