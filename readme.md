@@ -39,4 +39,4 @@ PyYAML
 
 ## bugs
 1. 使用 http 代理时, 会不定时出现无响应, 需要手动关闭, 重新启动. 不易测试\复现, 未找到原因
-0. 在消息上 recation 也会触发 edit
+0. 在消息上 recation 也会触发 edit 
