@@ -13,7 +13,7 @@ import datetime
 
 from core.static_config import static_config
 from utils.time import utc_timezone
-from utils.get_info import getChat3Info, getSticker3Info, getUser3Info
+from utils.get_info import getChatInfo, getStickerInfo, getUserInfo
 from utils.other import getMD5, choiceOne
 from utils.time import last_start_up_time
 
@@ -25,7 +25,7 @@ async def startCommand(update: Update, context: CallbackContext):
 
     message = update.message
     args = context.args # https://t.me/sdustbot?start=parameter 好像只能收到一个参数
-    logger.info(f"/start {''.join(args)} from {getUser3Info(message.from_user)} in {getChat3Info(message.chat)} at {message.date}")
+    logger.info(f"/start {''.join(args)} from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
 
     if message.chat.type != ChatType.PRIVATE:
         logger.debug("删除 /start 消息")
@@ -56,7 +56,7 @@ async def startCommand(update: Update, context: CallbackContext):
 async def uptimeCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     message = update.message
-    logger.info(f"/uptime from {getUser3Info(message.from_user)} in {getChat3Info(message.chat)} at {message.date}")
+    logger.info(f"/uptime from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
     text = "已运行时间: %.0f s" % (time.time() - last_start_up_time.stamp)
     logger.info(text)
     await message.reply_text(text)
@@ -64,7 +64,7 @@ async def uptimeCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def helpCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     message = update.message
-    logger.info(f"/help from {getUser3Info(message.from_user)} in {getChat3Info(message.chat)} at {message.date}")
+    logger.info(f"/help from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
 
     text = "山东科技大学群组: @shandongkeji"
     await message.reply_text(text)
@@ -77,14 +77,14 @@ async def captchaCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # 若编辑消息后的命令
         message = update.edited_message
     args = context.args
-    logger.info(f"/captcha from {getUser3Info(message.from_user)} in {getChat3Info(message.chat)} at {message.date}")
+    logger.info(f"/captcha from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
 
     if message.from_user.id in admin_id_set:
 
         if message.reply_to_message.from_user:
             # 标记的用户的 id
             message.reply_to_message.from_user.id
-            logger.debug(f"{getUser3Info(message.from_user)} 使用 /captcha 标记了 {getUser3Info(message.reply_to_message.from_user)}")
+            logger.debug(f"{getUserInfo(message.from_user)} 使用 /captcha 标记了 {getUserInfo(message.reply_to_message.from_user)}")
             user_id_md5 = getMD5(message.reply_to_message.from_user.id)
             # 记下message id, 完成验证后删除消息
             captcha_ask = await context.bot.send_message(chat_id=message.chat.id,

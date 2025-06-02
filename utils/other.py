@@ -7,7 +7,7 @@ import hashlib
 from telegram.ext import ContextTypes
 from telegram import Update, User, ChatPermissions, StickerSet
 import re
-from utils.get_info import getUser3Info, getChat3Info
+from utils.get_info import getUserInfo, getChatInfo
 from core.block_emoji import block_emoji_dict, emojiJsonWrite
 
 
@@ -80,9 +80,9 @@ async def changePermission(update: Update, context: ContextTypes.DEFAULT_TYPE, p
 
     await context.bot.restrict_chat_member(chat.id, user.id, all_permissions)
     if whether:
-        logger.info(f"已给予 {getUser3Info(user)} 在 {getChat3Info(chat)} 的权限")
+        logger.info(f"已给予 {getUserInfo(user)} 在 {getChatInfo(chat)} 的权限")
     else:
-        logger.info(f"已禁止 {getUser3Info(user)} 在 {getChat3Info(chat)} 的权限")
+        logger.info(f"已禁止 {getUserInfo(user)} 在 {getChatInfo(chat)} 的权限")
 
 def editEmojiId(emoji_name, sticker_set: StickerSet=None):
 

@@ -9,12 +9,13 @@ __pycache__/
 *.db
 *.sqlite3
 
-# Application config and logs
-/config/
-log/
-
 # Test files
 test.py
 
 # Editor and IDE files
 .vscode/
+
+# Application config and logs
+/config/
+log/
+files/

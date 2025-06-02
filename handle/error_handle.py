@@ -16,18 +16,13 @@ async def errorHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     error = context.error
     logger.error(f"Error handler catch: {error}")
 
-    errors = ["httpx.PoolTimeout", "httpx.LocalProtocolError", "SSLError", "httpx.ConnectError", "httpx.ReadError", "httpx.RemoteProtocolError"]
-
     if isinstance(error, NetworkError):
-        logger.error(f"已知 NetworkError 错误: {error}")
-        logger.error(f"{error.__cause__}")
-
-    elif any(error in str(error) for error in errors):
+        ...
         # 重启 updater
         # await restartUpdater(update, context)
-        logger.error(f"已知错误: {error}, 要重启 updater 吗?")
 
     else:
         # 详细错误信息
+        logger.error(f"__cause__: {error.__cause__}")
         tb_list = traceback.format_exception(None, error, error.__traceback__)
         logger.error(f"\n%s", "".join(tb_list))

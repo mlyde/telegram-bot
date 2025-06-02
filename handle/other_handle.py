@@ -9,7 +9,7 @@ import re
 import datetime
 from core.static_config import static_config
 from utils.time import utc_timezone
-from utils.get_info import getChat3Info, getSticker3Info, getUser3Info
+from utils.get_info import getChatInfo, getStickerInfo, getUserInfo
 from utils.other import addEmojisId
 from utils.lifecycle import stopApp
 
@@ -27,7 +27,7 @@ async def otherCommand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
     text = message.text
     # logger.debug(f"{text} from {message.chat.full_name}")
-    logger.info(f"receive command({message.id}) from {getUser3Info(message.from_user)} in {getChat3Info(message.chat)} at {message.date.astimezone(utc_timezone)}: {text}")
+    logger.info(f"receive command({message.id}) from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date.astimezone(utc_timezone)}: {text}")
 
     # 分离命令和参数
     command: str; arg: str
