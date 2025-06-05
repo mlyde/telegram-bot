@@ -6,6 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import re
+from core.database import db_user_verification
 
 from core.block_words import block_worlds_json, pattern_bio, pattern_button, pattern_chatname, pattern_group_message, pattern_user_id, pattern_username
 from core.block_emoji import block_emoji_dict
@@ -63,3 +64,21 @@ def check_all(content):
         return True
     else:
         return False
+
+def userActivity(chat_id, user_id):
+    """记录用户活跃"""
+
+    if db_user_verification.isExist(chat_id, user_id):
+
+        if db_user_verification.getActivity(chat_id, user_id):
+            # 活跃过, 直接返回
+            return
+        else:
+            db_user_verification.setActivity(chat_id, user_id)
+    else:
+        # 如果用户没有记录, 记录
+        db_user_verification.addUser(chat_id, user_id)
+
+
+    # 检测屏蔽词, 若有屏蔽词, 移除用户, 若无屏蔽词, 设为活跃
+    ## == 检测屏蔽词 ==

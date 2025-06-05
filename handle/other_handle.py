@@ -54,24 +54,23 @@ async def otherCommand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 print(response)
                 logger.debug('')
 
-                # to_date = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
-                # await context.bot.ban_chat_member(-1001226170027, 5131500671, until_date=to_date)
     else:
         await message.reply_text("unknown command")
 
-async def unbanCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# async def unbanCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
+#     """自助解除封禁, 暂不使用"""
 
-    if update.message.chat.type != ChatType.PRIVATE: return     # 只回复私聊
-    chat_id: int = active_group_id_set[0]    # 我的山科群
+#     chat_id = active_group_id_set[0]    # 先询问要解除哪个群的封禁
+#     if chat_id not in active_group_id_set: return False
 
-    admins = await context.bot.get_chat_administrators(chat_id)
-    if any(admin.user.id == context.bot.id for admin in admins):    # bot 是管理员
-        member = await context.bot.get_chat_member(chat_id, update.message.from_user.id)
-        if member.status == ChatMemberStatus.BANNED:        # 用户已被ban
-            if await context.bot.unban_chat_member(chat_id, update.message.from_user.id):
-                await update.message.reply_text("已解除禁言, 你可以再次加入群组了!")
-                logger.info(f"解除禁言: {update.message.from_user.full_name}")
-        else:
-            await update.message.reply_text("You're not on the ban list!")
-    else:
-        await update.message.reply_text("I can't unban for you!")
+#     admins = await context.bot.get_chat_administrators(chat_id)
+#     if any(admin.user.id == context.bot.id for admin in admins):    # bot 是管理员
+#         member = await context.bot.get_chat_member(chat_id, update.message.from_user.id)
+#         if member.status == ChatMemberStatus.BANNED:        # 用户已被ban
+#             if await context.bot.unban_chat_member(chat_id, update.message.from_user.id):
+#                 await update.message.reply_text("已解除禁言, 你可以再次加入群组了!")
+#                 logger.info(f"解除禁言: {update.message.from_user.full_name}")
+#         else:
+#             await update.message.reply_text("You're not on the ban list!")
+#     else:
+#         await update.message.reply_text("I can't unban for you!")

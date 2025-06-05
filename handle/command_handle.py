@@ -23,16 +23,16 @@ admin_id_set: set = static_config.get("admin_id")
 # Commands
 async def startCommand(update: Update, context: CallbackContext):
 
-    message = update.message
+    message = update.message if update.edited_message is None else update.edited_message
     args = context.args # https://t.me/sdustbot?start=parameter 好像只能收到一个参数
-    logger.info(f"/start {''.join(args)} from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
+    logger.info(f"/start with \"{' '.join(args)}\" from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
 
     if message.chat.type != ChatType.PRIVATE:
         logger.debug("删除 /start 消息")
         await message.delete()    # 删除消息, 防止其他人跟着点
         return     # 只回复私聊
 
-    # 判断参数是否为对应正确入群验证参数
+    # 判断参数是否为对应正确验证参数
     if args and args[0] == getMD5(message.chat.id):
         await message.reply_text("captcha")
         return
@@ -55,7 +55,7 @@ async def startCommand(update: Update, context: CallbackContext):
 
 async def uptimeCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    message = update.message
+    message = update.message if update.edited_message is None else update.edited_message
     logger.info(f"/uptime from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
     text = "已运行时间: %.0f s" % (time.time() - last_start_up_time.stamp)
     logger.info(text)

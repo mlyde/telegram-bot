@@ -3,6 +3,7 @@ logger = logging.getLogger(__name__)
 
 from core.block_words import pattern_username, pattern_user_id, pattern_bio, pattern_chatname
 from core.block_emoji import block_emoji_dict
+from core.database import db_user_verification
 from utils.get_info import getChatInfo, getStickerInfo, getUserInfo
 from utils.check_contents import containBlockedEmojiHtml, containBlockedWords, containBlockedEmojiId
 
@@ -60,3 +61,5 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                         await context.bot.ban_chat_member(chat.id, user.id)
         case _:
             logger.warning("unknown member status!")
+
+    db_user_verification.addUser(chat.id, user.id)

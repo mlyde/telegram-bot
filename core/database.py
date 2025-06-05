@@ -18,24 +18,28 @@ class Database:
         self.cursor = self.conn.cursor()
         self.table_name = table_name
 
-        self.createTable()
+        self._createTable()
 
-    def createTable(self):
+    def _createTable(self):
         """创建表"""
 
-        self.cursor.execute(f'''CREATE TABLE IF NOT EXISTS {self.table_name}
+        res = self.cursor.execute(f'''CREATE TABLE IF NOT EXISTS {self.table_name}
             (user_id INTEGER,
             chat_id INTEGER,
             verified BOOLEAN DEFAULT 0,
             token TEXT,
-            join_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            verify_date TIMESTAMP,
+            join_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            verify_time TIMESTAMP,
+            first_activity_time TIMESTAMP,
             PRIMARY KEY (user_id, chat_id))''')
         # 手动提交更改
         self.conn.commit()
+        logger.debug(res)
+        logger.debug(f"创建数据表 {self.table_name}")
+        return True
 
-    def create(self, user_id: int, chat_id: int, verified=False, token=''):
-        """创建一条数据"""
+    def addUser(self, chat_id: int, user_id: int, verified=False, token=''):
+        """添加成员"""
 
         with self.conn: # 自动提交更改
             # self.cursor.execute(f'''INSERT INTO products VALUES(?, ?, ?, ?)''', (user_id, chat_id, verified, token))
@@ -43,10 +47,26 @@ class Database:
                         (user_id, chat_id, verified, token)
                         VALUES (:user_id, :chat_id, :verified, :token)''',
                         dict(user_id=user_id, chat_id=chat_id, verified=verified, token=token))
+        logger.debug(f"在 {chat_id} 添加成员 {user_id}")
+        return True
 
-    def read(self, user_id: int, chat_id: int):
-        """查询数据"""
+    def isExist(self, chat_id: int, user_id: int, ):
 
+        with self.conn:
+            self.cursor.execute(
+                f"SELECT 1 FROM {self.table_name} WHERE user_id = ? AND chat_id = ? LIMIT 1",
+                (user_id, chat_id)
+            )
+
+        exists = self.cursor.fetchone() is not None
+        logger.debug(f"{chat_id} 中存在 {user_id}")
+        return exists
+
+
+    def getVerify(self, chat_id: int, user_id: int):
+        """查询是否验证"""
+
+        logger.debug(f"查询 {user_id} 是否在 {chat_id}")
         with self.conn:
             self.cursor.execute(f'''SELECT verified FROM {self.table_name}
                         WHERE user_id=? AND chat_id=?''',
@@ -57,6 +77,7 @@ class Database:
     def readAll(self, parser: bool=True):
         """获取表中所有内容"""
 
+        logger.debug(f"获取表中所有内容")
         with self.conn:
             self.cursor.execute(f"SELECT * FROM {self.table_name}")
             rows = self.cursor.fetchall()
@@ -70,9 +91,10 @@ class Database:
             else:
                 return rows
 
-    def getUnverifiedUsers(self, chat_id: int):
+    def getUnVerifiedUsers(self, chat_id: int):
         """查询指定群未完成验证的用户"""
 
+        logger.debug(f"查询 {chat_id} 中未完成验证的用户")
         with self.conn:
             self.cursor.execute(f'''SELECT user_id FROM {self.table_name}
                         WHERE chat_id=? AND verified=0''',
@@ -81,22 +103,50 @@ class Database:
             result = [row[0] for row in rows]
             return result
 
-    def setVerified(self, user_id: int, chat_id: int):
-        """更新数据"""
+    def setVerified(self, chat_id: int, user_id: int):
+        """设置为已验证"""
 
         with self.conn:
             self.cursor.execute(f'''UPDATE {self.table_name}
-                        SET verified=1, verify_date=CURRENT_TIMESTAMP
+                        SET verified=1, verify_time=CURRENT_TIMESTAMP
                         WHERE user_id=? AND chat_id=?''',
                         (user_id, chat_id))
 
-    def delete(self, user_id: int, chat_id: int):
-        """删除数据"""
+        logger.debug(f"{user_id} 在 {chat_id} 中已设置为完成验证")
+        return True
+
+    def getActivity(self, chat_id: int, user_id: int):
+        """查询初次活跃时间"""
+
+        with self.conn:
+            self.cursor.execute(f'''SELECT first_activity_time FROM {self.table_name}
+                        WHERE user_id=? AND chat_id=?''',
+                        (user_id, chat_id))
+            result = self.cursor.fetchone()
+            return result[0] if result else False
+
+    def setActivity(self, chat_id: int, user_id: int):
+        """设置初次活跃时间"""
+
+        with self.conn:
+            self.cursor.execute(f'''UPDATE {self.table_name}
+                        SET first_activity_time=CURRENT_TIMESTAMP
+                        WHERE user_id=? AND chat_id=?''',
+                        (user_id, chat_id))
+
+        logger.debug(f"设置 {user_id} 在 {chat_id} 中活跃")
+        return True
+
+    def remove(self, chat_id: int, user_id: int):
+        """删除用户记录数据"""
 
         with self.conn:
             self.cursor.execute(f'''DELETE FROM {self.table_name}
                         WHERE user_id=? AND chat_id=?''',
                         (user_id, chat_id))
+
+        logger.debug(f"已删除数据库中 {chat_id} 的 {user_id}")
+        return True
 
     def __enter__(self):
         return self
@@ -105,28 +155,31 @@ class Database:
         self.conn.close()
 
 
-db_user_verification = Database("user_verification")
+db_user_verification = Database("user_verification", db_path="config/user_verification.db")
 
 
 if __name__ == "__main__":
     """测试数据库"""
 
-    db_user_verification.create(2, -1, token="test2")
-    db_user_verification.create(1, -1, verified=True, token="test1")
+    db_user_verification.addUser(-1, 1, token="test2")
+    db_user_verification.addUser(-1, 2, verified=True, token="test1")
 
-    print(db_user_verification.getUnverifiedUsers(-1))
-    print(db_user_verification.read(1, -1))
-    print(db_user_verification.setVerified(2,-1))
+    print(db_user_verification.getUnVerifiedUsers(-1))
+    print(db_user_verification.getVerify(-1, 1))
+    db_user_verification.setVerified(-1, 2)
+
     print("\n所有数据:")
     datas = db_user_verification.readAll()
     for data in datas:
         print(data)
 
-    db_user_verification.delete(1, -1)
-    db_user_verification.delete(2, -1)
+    print("Exist:", db_user_verification.isExist(-1, 1))
+
+    db_user_verification.remove(-1, 1)
+    db_user_verification.remove(-1, -2)
 
     try:
-        db_user_verification.delete(1, 1)
+        db_user_verification.remove(1, 1)
 
     except sqlite3.Error as e:
         print(f"database Error: {e}")
