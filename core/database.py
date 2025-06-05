@@ -23,20 +23,33 @@ class Database:
     def _createTable(self):
         """创建表"""
 
-        res = self.cursor.execute(f'''CREATE TABLE IF NOT EXISTS {self.table_name}
-            (user_id INTEGER,
-            chat_id INTEGER,
-            verified BOOLEAN DEFAULT 0,
-            token TEXT,
-            join_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            verify_time TIMESTAMP,
-            first_activity_time TIMESTAMP,
-            PRIMARY KEY (user_id, chat_id))''')
-        # 手动提交更改
-        self.conn.commit()
-        logger.debug(res)
-        logger.debug(f"创建数据表 {self.table_name}")
+        if self._tableExist():
+            logger.debug(f"已存在数据表: {self.table_name}")
+        else:
+            self.cursor.execute(
+                f'''CREATE TABLE IF NOT EXISTS {self.table_name}
+                (user_id INTEGER,
+                chat_id INTEGER,
+                verified BOOLEAN DEFAULT 0,
+                token TEXT,
+                join_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                verify_time TIMESTAMP,
+                first_activity_time TIMESTAMP,
+                PRIMARY KEY (user_id, chat_id))''')
+            # 手动提交更改
+            self.conn.commit()
+            logger.debug(f"已创建数据表: {self.table_name}")
         return True
+
+    def _tableExist(self):
+        """表是否已经存在"""
+
+        self.cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+            (self.table_name,)
+        )
+        existed_before = self.cursor.fetchone() is not None
+        return existed_before
 
     def addUser(self, chat_id: int, user_id: int, verified=False, token=''):
         """添加成员"""
@@ -47,7 +60,7 @@ class Database:
                         (user_id, chat_id, verified, token)
                         VALUES (:user_id, :chat_id, :verified, :token)''',
                         dict(user_id=user_id, chat_id=chat_id, verified=verified, token=token))
-        logger.debug(f"在 {chat_id} 添加成员 {user_id}")
+        logger.debug(f"已添加数据库中 {chat_id} 的 {user_id}")
         return True
 
     def isExist(self, chat_id: int, user_id: int, ):

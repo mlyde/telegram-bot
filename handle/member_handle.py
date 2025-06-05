@@ -1,14 +1,15 @@
+"""
+用户在群中的状态发生变化的处理函数
+"""
 import logging
 logger = logging.getLogger(__name__)
 
-from core.block_words import pattern_username, pattern_user_id, pattern_bio, pattern_chatname
-from core.block_emoji import block_emoji_dict
 from core.database import db_user_verification
 from utils.get_info import getChatInfo, getStickerInfo, getUserInfo
-from utils.check_contents import containBlockedEmojiHtml, containBlockedWords, containBlockedEmojiId
+from utils.check_contents import checkUserBlockContent
 
 from telegram.constants import ChatMemberStatus
-from telegram import Update, ChatFullInfo
+from telegram import Update
 from telegram.ext import ContextTypes
 
 
@@ -33,7 +34,10 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         logger.debug(f"{getUserInfo(user)}member status changed from '{old_member_status}' to '{new_member_status}'")
 
     match new_member_status:    # 先判断状态变为了什么, 再判断之前是什么
-        case ChatMemberStatus.BANNED:       log_status_different("has been banned")
+        case ChatMemberStatus.BANNED:
+            log_status_different("has been banned")
+            db_user_verification.remove(chat.id, user.id)
+            return
         case ChatMemberStatus.RESTRICTED:   log_status_different("has been restricted")
         case ChatMemberStatus.ADMINISTRATOR:log_status_different("is the administrator")
         case ChatMemberStatus.OWNER:        log_status_different("is owner")
@@ -41,6 +45,8 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             match old_member_status:
                 case ChatMemberStatus.BANNED:log_status_different("has been unbanned")
                 case _:                      log_status_different("left")
+            db_user_verification.remove(chat.id, user.id)
+            return
         case ChatMemberStatus.MEMBER:
             match old_member_status:
                 case ChatMemberStatus.ADMINISTRATOR:log_status_different("is no longer be administrator")
@@ -48,17 +54,7 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 case ChatMemberStatus.OWNER:        log_status_different("is no longer the owner")
                 case _: # 为新成员
                     log_status_different("is a member")
-                    # 名字违禁
-                    if containBlockedWords(user.full_name, pattern_username) or containBlockedWords(user.first_name, pattern_username) or containBlockedWords(user.username, pattern_user_id):
-                        logger.debug(f"ban {getUserInfo(user)}")
-                        await context.bot.ban_chat_member(chat.id, user.id)
-                    # 名字的表情 或 主页中挂的群 或 简介违禁
-                    user_chat: ChatFullInfo = await context.bot.get_chat(user.id)
-                    logger.debug(user_chat)
-                    if containBlockedWords(user_chat.bio, pattern_bio) or containBlockedWords(user_chat.effective_name, pattern_chatname) \
-                        or (containBlockedEmojiId(user_chat.emoji_status_custom_emoji_id, block_emoji_dict) if hasattr(user_chat, "emoji_status_custom_emoji_id") else False):
-                        logger.debug(f"ban {getUserInfo(user)}")
-                        await context.bot.ban_chat_member(chat.id, user.id)
+                    await checkUserBlockContent(chat, user)
         case _:
             logger.warning("unknown member status!")
 

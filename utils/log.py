@@ -76,6 +76,7 @@ def fileLogging(files_path, formatter: Formatter, level = logging.DEBUG):
     # 不同模块独立日志
     module_loggers = {
         "main": logger_bot,
+        "utils.admin": logger_bot,
         "utils.check_contents": logger_bot,
         "utils.get_info": logger_bot,
         "utils.lifecycle": logger_bot,
@@ -88,6 +89,7 @@ def fileLogging(files_path, formatter: Formatter, level = logging.DEBUG):
         "core.block_emoji": logger_bot,
         "core.block_words": logger_bot,
         "core.static_config": logger_bot,
+        "core.database": logger_bot,
         "handle.callback_handle": logger_bot,
         "handle.command_handle": logger_bot,
         "handle.error_handle": logger_error,

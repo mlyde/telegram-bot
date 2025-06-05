@@ -70,6 +70,7 @@ async def helpCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await message.reply_text(text)
 
 async def captchaCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """标记用户, 由 bot 向用户发起一次验证"""   # 未使用
 
     if update.message:
         message = update.message

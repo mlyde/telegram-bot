@@ -7,9 +7,9 @@ from telegram.constants import ChatType
 
 from core.static_config import static_config
 from core.block_words import pattern_group_message, pattern_button
-from core.block_emoji import block_emoji_dict
+from core.database import db_user_verification
 from utils.get_info import getChatInfo, getStickerInfo, getUserInfo, getAudioInfo
-from utils.check_contents import containBlockedEmojiHtml, containBlockedWords, check_all
+from utils.check_contents import containBlockedEmojiHtml, containBlockedWords, test_contain_all_block_words, checkMessageBlockContent, checkUserBlockContent, userIsActivity
 
 
 directory: str = static_config.get("directory")
@@ -30,7 +30,6 @@ def logReceiveMediaMessage(message, type, is_edit, info):
         + (" private chat" if message.chat.id == message.from_user.id else f" {getChatInfo(message.chat)}")\
         + f" at {message.date}"\
         + (f": {info}" if info else '')
-
     logger.info(log_text)
 
 # Message
@@ -39,36 +38,33 @@ async def textHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_edit = bool(update.edited_message)
     message = update.edited_message if is_edit else update.message
     is_reply = bool(message.reply_to_message)
-    text = message.text
 
     log_text = ("receive edit" if is_edit else "receive")\
          + f" text({message.id}) from {getUserInfo(message.from_user)} in"\
          + (" private chat" if message.chat.id == message.from_user.id else f" {getChatInfo(message.chat)}")\
          + (f" reply to message({message.reply_to_message.id})" if is_reply else '')\
          + f" at {message.date}: {text}"
-
     logger.info(log_text)
 
     message_type = message.chat.type
     # reply_markup: InlineKeyboardMarkup = message.reply_markup
 
+    # 如果用户是第一次活跃, 检查用户页内容
+    if not userIsActivity(chat_id=message.chat.id, user_id=message.from_user.id):
+        await checkUserBlockContent(context, message.chat.id, message.from_user.id)
+        
+
     if message_type in {ChatType.GROUP, ChatType.SUPERGROUP}:
         if message.chat.id in active_group_id_set:
-            # 违禁词或违禁会员表情
-            if containBlockedWords(text, pattern_group_message) or containBlockedEmojiHtml(message.text_html, block_emoji_dict):
-                logger.debug(f"删除消息 {message.id}")
-                await message.delete()
-                # await changePermission(update, context, False)
-                logger.debug(f"ban {getUserInfo(message.from_user)}")
-                await context.bot.ban_chat_member(message.chat_id, message.from_user.id)
-                return
+
+            await checkMessageBlockContent(message, context)
 
     elif message.from_user.id in admin_id_set:
         # 将管理员发给 bot 的内容做屏蔽词检测, 全匹配
         text = message.text
         logger.info(text)
 
-        text = "匹配成功" if check_all(text) else "不含屏蔽词"
+        text = "匹配成功" if test_contain_all_block_words(text) else "不含屏蔽词"
 
         await update.message.reply_text(text)
 
