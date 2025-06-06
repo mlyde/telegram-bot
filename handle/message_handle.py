@@ -1,7 +1,7 @@
 import logging
 logger = logging.getLogger(__name__)
 
-from telegram import Update, InlineKeyboardMarkup, MessageOrigin
+from telegram import Update, InlineKeyboardMarkup, MessageOrigin, Message
 from telegram.ext import ContextTypes
 from telegram.constants import ChatType
 
@@ -15,8 +15,9 @@ from utils.check_contents import containBlockedEmojiHtml, containBlockedWords, t
 directory: str = static_config.get("directory")
 admin_id_set: set = static_config.get("admin_id")
 active_group_id_set: set = static_config.get("active_group_id")
+GROUPS_SET = {ChatType.GROUP, ChatType.SUPERGROUP}
 
-def logReceiveMediaMessage(message, type, is_edit, info):
+def logReceiveMediaMessage(message: Message, type, is_edit: bool, info):
     """整合媒体消息接收日志"""
 
     is_reply = bool(message.reply_to_message)
@@ -38,6 +39,7 @@ async def textHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     is_edit = bool(update.edited_message)
     message = update.edited_message if is_edit else update.message
     is_reply = bool(message.reply_to_message)
+    text = message.text
 
     log_text = ("receive edit" if is_edit else "receive")\
          + f" text({message.id}) from {getUserInfo(message.from_user)} in"\
@@ -51,12 +53,10 @@ async def textHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # 如果用户是第一次活跃, 检查用户页内容
     if not userIsActivity(chat_id=message.chat.id, user_id=message.from_user.id):
-        await checkUserBlockContent(context, message.chat.id, message.from_user.id)
-        
+        await checkUserBlockContent(context, message.chat, message.from_user)
 
-    if message_type in {ChatType.GROUP, ChatType.SUPERGROUP}:
+    if message_type in GROUPS_SET:
         if message.chat.id in active_group_id_set:
-
             await checkMessageBlockContent(message, context)
 
     elif message.from_user.id in admin_id_set:

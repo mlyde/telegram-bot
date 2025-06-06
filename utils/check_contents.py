@@ -35,7 +35,6 @@ def findBlockListSource(text: str):
             if re.findall(i, text):
                 yield i
 
-
 def containBlockedWords(text: str, pattern: re.Pattern) -> bool:
     """ 判断文本中是否包含屏蔽词, 含有则返回 True """
 
@@ -70,24 +69,25 @@ def test_contain_all_block_words(content):
 async def checkUserBlockContent(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: User):
     """检查用户主页的屏蔽词, 并封禁用户"""
 
+    need_ban = False
+
     # 名字违禁
-    if containBlockedWords(user.full_name, pattern_username) or containBlockedWords(user.first_name, pattern_username) or containBlockedWords(user.username, pattern_user_id):
-        logger.debug(f"ban {getUserInfo(user)}")
-        await context.bot.ban_chat_member(chat.id, user.id)
-        return True
+    if need_ban or containBlockedWords(user.full_name, pattern_username) or containBlockedWords(user.first_name, pattern_username) or containBlockedWords(user.username, pattern_user_id):
+        need_ban = True
 
     # 名字的表情 或 主页中挂的群 或 简介违禁
     user_chat: ChatFullInfo = await context.bot.get_chat(user.id)
     logger.debug(user_chat)
-    if containBlockedWords(user_chat.bio, pattern_bio) or containBlockedWords(user_chat.effective_name, pattern_chatname) \
+    if need_ban or containBlockedWords(user_chat.bio, pattern_bio) or containBlockedWords(user_chat.effective_name, pattern_chatname) \
         or (containBlockedEmojiId(user_chat.emoji_status_custom_emoji_id, block_emoji_dict) if hasattr(user_chat, "emoji_status_custom_emoji_id") else False):
+        need_ban = True
+
+    if need_ban:
         logger.debug(f"ban {getUserInfo(user)}")
         await context.bot.ban_chat_member(chat.id, user.id)
         return True
-
-    # 从数据库中移除用户
-    db_user_verification.remove(chat_id=chat.id, user_id=user.id)
-    return False
+    else:
+        return False
 
 async def checkMessageBlockContent(message: Message, context: ContextTypes.DEFAULT_TYPE):
     """检查用户发出的消息的屏蔽词, 并封禁用户"""
@@ -102,21 +102,18 @@ async def checkMessageBlockContent(message: Message, context: ContextTypes.DEFAU
         return True
 
     # 从数据库中移除用户
-    db_user_verification.remove(message.chat_id, message.from_user.id)
     return False
 
-def userIsActivity(chat_id, user_id):
-    """记录用户活跃"""
+def userIsActivity(chat_id: int, user_id: int):
+    """查询活跃, 并记录用户活跃"""
 
     if db_user_verification.isExist(chat_id, user_id):
-
         if db_user_verification.getActivity(chat_id, user_id):
             # 活跃过, 直接返回
             return True
-        else:
-            db_user_verification.setActivity(chat_id, user_id)
     else:
-        # 如果用户没有记录, 记录
+        # 如果用户没有记录, 则记录
         db_user_verification.addUser(chat_id, user_id)
-    
+
+    db_user_verification.setActivity(chat_id, user_id)
     return False

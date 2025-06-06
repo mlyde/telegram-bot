@@ -18,12 +18,13 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     """ 新成员加入时, 对名字\简介进行屏蔽词检测 """
 
     def log_status_different(middle_message: str):
-        """ 大致相同格式的成员状态信息 """
+        """简化输出函数, 类似格式的成员状态信息"""
         logger.info(f"{getUserInfo(user)} {middle_message} by {getUserInfo(chat_member.from_user)} in {getChatInfo(chat)} at {chat_member.date}.")
 
     chat = update.effective_chat
     chat_member = update.chat_member
     user = chat_member.new_chat_member.user
+    need_remove = False
 
     # old_member_status, new_member_status = chat_member.difference().get("status", (None, None)) # _chat_member.status 不一样时取出
     old_member_status, new_member_status = chat_member.old_chat_member.status, chat_member.new_chat_member.status
@@ -36,8 +37,6 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     match new_member_status:    # 先判断状态变为了什么, 再判断之前是什么
         case ChatMemberStatus.BANNED:
             log_status_different("has been banned")
-            db_user_verification.remove(chat.id, user.id)
-            return
         case ChatMemberStatus.RESTRICTED:   log_status_different("has been restricted")
         case ChatMemberStatus.ADMINISTRATOR:log_status_different("is the administrator")
         case ChatMemberStatus.OWNER:        log_status_different("is owner")
@@ -45,8 +44,7 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             match old_member_status:
                 case ChatMemberStatus.BANNED:log_status_different("has been unbanned")
                 case _:                      log_status_different("left")
-            db_user_verification.remove(chat.id, user.id)
-            return
+            need_remove = True
         case ChatMemberStatus.MEMBER:
             match old_member_status:
                 case ChatMemberStatus.ADMINISTRATOR:log_status_different("is no longer be administrator")
@@ -54,8 +52,10 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 case ChatMemberStatus.OWNER:        log_status_different("is no longer the owner")
                 case _: # 为新成员
                     log_status_different("is a member")
-                    await checkUserBlockContent(chat, user)
+                    await checkUserBlockContent(context, chat, user)
+            need_remove = True
         case _:
             logger.warning("unknown member status!")
 
-    db_user_verification.addUser(chat.id, user.id)
+    if need_remove:
+        db_user_verification.remove(chat.id, user.id)

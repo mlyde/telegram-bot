@@ -34,7 +34,7 @@ class Database:
                 token TEXT,
                 join_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 verify_time TIMESTAMP,
-                first_activity_time TIMESTAMP,
+                activity_time TIMESTAMP,
                 PRIMARY KEY (user_id, chat_id))''')
             # 手动提交更改
             self.conn.commit()
@@ -54,16 +54,18 @@ class Database:
     def addUser(self, chat_id: int, user_id: int, verified=False, token=''):
         """添加成员"""
 
+        if self.isExist(chat_id, user_id): return False
         with self.conn: # 自动提交更改
             # self.cursor.execute(f'''INSERT INTO products VALUES(?, ?, ?, ?)''', (user_id, chat_id, verified, token))
             self.cursor.execute(f'''INSERT OR IGNORE INTO {self.table_name}
                         (user_id, chat_id, verified, token)
                         VALUES (:user_id, :chat_id, :verified, :token)''',
                         dict(user_id=user_id, chat_id=chat_id, verified=verified, token=token))
-        logger.debug(f"已添加数据库中 {chat_id} 的 {user_id}")
+        logger.debug(f"数据库已添加 {user_id} 在 {chat_id} 中")
         return True
 
-    def isExist(self, chat_id: int, user_id: int, ):
+    def isExist(self, chat_id: int, user_id: int):
+        """查询是否已记录用户在群中"""
 
         with self.conn:
             self.cursor.execute(
@@ -72,25 +74,14 @@ class Database:
             )
 
         exists = self.cursor.fetchone() is not None
-        logger.debug(f"{chat_id} 中存在 {user_id}")
+        if exists:
+            logger.debug(f"数据库中 {user_id} 已在 {chat_id}")
         return exists
 
-
-    def getVerify(self, chat_id: int, user_id: int):
-        """查询是否验证"""
-
-        logger.debug(f"查询 {user_id} 是否在 {chat_id}")
-        with self.conn:
-            self.cursor.execute(f'''SELECT verified FROM {self.table_name}
-                        WHERE user_id=? AND chat_id=?''',
-                        (user_id, chat_id))
-            result = self.cursor.fetchone()
-            return result[0] if result else False
-
     def readAll(self, parser: bool=True):
-        """获取表中所有内容"""
+        """获取数据库表中所有内容"""
 
-        logger.debug(f"获取表中所有内容")
+        logger.debug(f"获取数据库表中所有内容")
         with self.conn:
             self.cursor.execute(f"SELECT * FROM {self.table_name}")
             rows = self.cursor.fetchall()
@@ -107,7 +98,7 @@ class Database:
     def getUnVerifiedUsers(self, chat_id: int):
         """查询指定群未完成验证的用户"""
 
-        logger.debug(f"查询 {chat_id} 中未完成验证的用户")
+        logger.debug(f"查询数据库中 {chat_id} 中未完成验证的用户")
         with self.conn:
             self.cursor.execute(f'''SELECT user_id FROM {self.table_name}
                         WHERE chat_id=? AND verified=0''',
@@ -125,14 +116,15 @@ class Database:
                         WHERE user_id=? AND chat_id=?''',
                         (user_id, chat_id))
 
-        logger.debug(f"{user_id} 在 {chat_id} 中已设置为完成验证")
+        logger.debug(f"数据库记录 {user_id} 在 {chat_id} 中已完成验证")
         return True
 
-    def getActivity(self, chat_id: int, user_id: int):
-        """查询初次活跃时间"""
+    def getVerified(self, chat_id: int, user_id: int):
+        """查询是否验证"""
 
+        logger.debug(f"数据库查询 {user_id} 是否在 {chat_id} 完成验证")
         with self.conn:
-            self.cursor.execute(f'''SELECT first_activity_time FROM {self.table_name}
+            self.cursor.execute(f'''SELECT verified FROM {self.table_name}
                         WHERE user_id=? AND chat_id=?''',
                         (user_id, chat_id))
             result = self.cursor.fetchone()
@@ -143,12 +135,22 @@ class Database:
 
         with self.conn:
             self.cursor.execute(f'''UPDATE {self.table_name}
-                        SET first_activity_time=CURRENT_TIMESTAMP
+                        SET activity_time=CURRENT_TIMESTAMP
                         WHERE user_id=? AND chat_id=?''',
                         (user_id, chat_id))
 
         logger.debug(f"设置 {user_id} 在 {chat_id} 中活跃")
         return True
+
+    def getActivity(self, chat_id: int, user_id: int):
+        """查询初次活跃时间"""
+
+        with self.conn:
+            self.cursor.execute(f'''SELECT activity_time FROM {self.table_name}
+                        WHERE user_id=? AND chat_id=?''',
+                        (user_id, chat_id))
+            result = self.cursor.fetchone()
+            return result[0] if result and result[0] is not None else False
 
     def remove(self, chat_id: int, user_id: int):
         """删除用户记录数据"""
@@ -158,7 +160,7 @@ class Database:
                         WHERE user_id=? AND chat_id=?''',
                         (user_id, chat_id))
 
-        logger.debug(f"已删除数据库中 {chat_id} 的 {user_id}")
+        logger.debug(f"已删除数据库中 {user_id} 在 {chat_id} 中的数据")
         return True
 
     def __enter__(self):
@@ -178,7 +180,7 @@ if __name__ == "__main__":
     db_user_verification.addUser(-1, 2, verified=True, token="test1")
 
     print(db_user_verification.getUnVerifiedUsers(-1))
-    print(db_user_verification.getVerify(-1, 1))
+    print(db_user_verification.getVerified(-1, 1))
     db_user_verification.setVerified(-1, 2)
 
     print("\n所有数据:")
@@ -187,6 +189,13 @@ if __name__ == "__main__":
         print(data)
 
     print("Exist:", db_user_verification.isExist(-1, 1))
+
+    # print((db_user_verification.setActivity(-1, 1)))
+    # print((db_user_verification.getActivity(-1, 1)))
+    
+    print(db_user_verification.getActivity(-1, 1))
+    print(bool(db_user_verification.setActivity(-1, 1)))
+    print(bool(db_user_verification.getActivity(-1, 1)))
 
     db_user_verification.remove(-1, 1)
     db_user_verification.remove(-1, -2)
