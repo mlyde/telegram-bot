@@ -18,6 +18,7 @@ class Database:
         self.cursor = self.conn.cursor()
         self.table_name = table_name
 
+        # 创建表, 若更改了 key, 需要手动删除 .db 文件, 重新创建
         self._createTable()
 
     def _createTable(self):

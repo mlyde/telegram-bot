@@ -8,16 +8,20 @@ from telegram.constants import ChatType
 from core.static_config import static_config
 from core.block_words import pattern_group_message, pattern_button
 from core.database import db_user_verification
-from utils.get_info import getChatInfo, getStickerInfo, getUserInfo, getAudioInfo
-from utils.check_contents import containBlockedEmojiHtml, containBlockedWords, test_contain_all_block_words, checkMessageBlockContent, checkUserBlockContent, userIsActivity
+from utils.get_info import (
+    getChatInfo, getStickerInfo, getUserInfo, 
+    getAudioInfo, getMessageOriginInfo, getCommonFileInfo,
+    getStickerSetInfo, getLocationInfo, getMediaCommonInfo, getAudioInfo, getVideoInfo, getPhotoSizeInfo
+    )
+from utils.check_contents import test_contain_all_block_words, checkMessageBlockContent, checkUserBlockContent, userIsActivity, checkButtonBlockContent
 
 
 directory: str = static_config.get("directory")
 admin_id_set: set = static_config.get("admin_id")
 active_group_id_set: set = static_config.get("active_group_id")
-GROUPS_SET = {ChatType.GROUP, ChatType.SUPERGROUP}
+groups_set = {ChatType.GROUP, ChatType.SUPERGROUP}
 
-def logReceiveMediaMessage(message: Message, type, is_edit: bool, info):
+def logReceiveMediaMessage(message: Message, type: str, is_edit: bool, info: str = None):
     """整合媒体消息接收日志"""
 
     is_reply = bool(message.reply_to_message)
@@ -38,24 +42,15 @@ async def textHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     is_edit = bool(update.edited_message)
     message = update.edited_message if is_edit else update.message
-    is_reply = bool(message.reply_to_message)
     text = message.text
-
-    log_text = ("receive edit" if is_edit else "receive")\
-         + f" text({message.id}) from {getUserInfo(message.from_user)} in"\
-         + (" private chat" if message.chat.id == message.from_user.id else f" {getChatInfo(message.chat)}")\
-         + (f" reply to message({message.reply_to_message.id})" if is_reply else '')\
-         + f" at {message.date}: {text}"
-    logger.info(log_text)
-
     message_type = message.chat.type
-    # reply_markup: InlineKeyboardMarkup = message.reply_markup
+    logReceiveMediaMessage(message, "text", is_edit, text)
 
-    # 如果用户是第一次活跃, 检查用户页内容
+    # 如果用户是第一次活跃, 二次检查用户页内容
     if not userIsActivity(chat_id=message.chat.id, user_id=message.from_user.id):
         await checkUserBlockContent(context, message.chat, message.from_user)
 
-    if message_type in GROUPS_SET:
+    if message_type in groups_set:
         if message.chat.id in active_group_id_set:
             await checkMessageBlockContent(message, context)
 
@@ -65,60 +60,55 @@ async def textHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.info(text)
 
         text = "匹配成功" if test_contain_all_block_words(text) else "不含屏蔽词"
-
         await update.message.reply_text(text)
 
 async def photoHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-
     is_edit = bool(update.edited_message)
     message = update.edited_message if is_edit else update.message
+    photo_info = getPhotoSizeInfo(message.photo)
+    logReceiveMediaMessage(message, "photo", is_edit, photo_info)
 
-    logReceiveMediaMessage(message, "photo", is_edit, '')
-
-    # if update.message.from_user.id in admin_id_set:
-    #     photo_id: str = update.message.photo[-1].file_id    # -1 为最大尺寸图片
-
+    # if message.from_user.id in admin_id_set:
+    #     photo_id = message.photo[-1].file_id    # -1 为最大尺寸图片
     #     # 保存图片
     #     file = await context.bot.get_file(photo_id)
     #     await file.download_to_drive(f"{directory}/{file.file_unique_id}_{file.file_path.split('/')[-1]}")
-    #     logger.info("picture saved")
-
-    # attachment: list = message.effective_attachment    # 附件
+    #     logger.info(f"photo {photo_info} saved")
 
 async def videoHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     is_edit = bool(update.edited_message)
     message = update.edited_message if is_edit else update.message
+    video_info = getVideoInfo(message.video)
+    logReceiveMediaMessage(message, "video", is_edit, video_info)
 
-    logReceiveMediaMessage(message, "video", is_edit, '')
-
-    if message.from_user.id in admin_id_set:
-        video_id: str = message.video.file_id    # -1 为最大尺寸
-        # 保存视频
-        file = await context.bot.get_file(video_id)
-        await file.download_to_drive(f"{directory}/{file.file_unique_id}_{file.file_path.split('/')[-1]}")
-        logger.info("video saved")
+    # if message.from_user.id in admin_id_set:
+    #     video_id = message.video.file_id    # -1 为最大尺寸
+    #     # 保存视频
+    #     file = await context.bot.get_file(video_id)
+    #     await file.download_to_drive(f"{directory}/{file.file_unique_id}_{file.file_path.split('/')[-1]}")
+    #     logger.info(f"video {video_info} saved")
 
 async def documentHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     is_edit = bool(update.edited_message)
     message = update.edited_message if is_edit else update.message
+    document_info = getCommonFileInfo(message.document)
 
-    logReceiveMediaMessage(message, "document", is_edit, '')
+    logReceiveMediaMessage(message, "document", is_edit, document_info)
 
 async def stickerHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     is_edit = bool(update.edited_message)
     message = update.edited_message if is_edit else update.message
+    sticker_info = getStickerInfo(message.sticker)
+    logReceiveMediaMessage(message, "sticker", is_edit, sticker_info)
 
-    logReceiveMediaMessage(message, "sticker", is_edit, getStickerInfo(message.sticker))
-
-    # sticker_set = await context.bot.get_sticker_set(message.sticker.set_name) # 贴纸包详细内容
-
-    if message.chat.type != ChatType.PRIVATE: return # 只回复私聊
-    # 发送一个相同的贴纸
-    await message.reply_sticker(sticker=message.sticker.file_id)
+    if message.chat.type == ChatType.PRIVATE:
+        # 如果是私聊, 回复一个相同的贴纸
+        await message.reply_sticker(sticker=message.sticker.file_id)
+        return
     # await message.reply_sticker(sticker='CAACAgUAAxkBAAICBGaThaP_3NPC0J301sJxAkwv81wZAAKNCQACCYSJVmS11JMf6Da9NQQ')
 
 async def audioHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -126,23 +116,18 @@ async def audioHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     is_edit = bool(update.edited_message)
     message = update.edited_message if is_edit else update.message
-    info = getAudioInfo(message.audio)
-
-    logReceiveMediaMessage(message, "audio", is_edit, info)
-
+    audio_info = getAudioInfo(message.audio)
+    logReceiveMediaMessage(message, "audio", is_edit, audio_info)
 
 async def voiceHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ 语音消息 """
 
     is_edit = bool(update.edited_message)
     message = update.edited_message if is_edit else update.message
+    voice_info = getMediaCommonInfo(message.voice)
+    logReceiveMediaMessage(message, "voice", is_edit, voice_info)
 
-    logReceiveMediaMessage(message, "voice", is_edit, '')
-    logger.debug(message)
-
-    # voice = message.voice
-    # voice_file = await context.bot.get_file(voice.file_id)
-
+    # voice_file = await context.bot.get_file(message.voice.file_id)
 
 async def storyHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -157,8 +142,8 @@ async def locationHandleMessage(update: Update, context: ContextTypes.DEFAULT_TY
 
     is_edit = bool(update.edited_message)
     message = update.edited_message if is_edit else update.message
-
-    logReceiveMediaMessage(message, "location", is_edit, '')
+    lal = getLocationInfo(message.location)
+    logReceiveMediaMessage(message, "location", is_edit, lal)
 
 # 不同类型消息对应的函数
 message_handlers = {
@@ -178,55 +163,16 @@ async def forwardedHandleMessage(update: Update, context: ContextTypes.DEFAULT_T
     """所有转发消息"""
 
     message = update.message
-    # 能否获得消息来源者信息
-    forward_origin: MessageOrigin = message.forward_origin
-    if forward_origin.type == forward_origin.USER:  # 用户
-        name = forward_origin.sender_user.full_name
-        id = forward_origin.sender_user.id
-    elif forward_origin.type in {forward_origin.CHAT, forward_origin.CHANNEL}:  # 群或频道
-        name = forward_origin.chat.title
-        id = forward_origin.chat.id
-    elif forward_origin.type == forward_origin.HIDDEN_USER: # 隐藏的用户名
-        name = forward_origin.sender_user_name
-        id = None
+    message_origin_info = getMessageOriginInfo(message.forward_origin)
 
-    # logger.debug(message)
-
-    if message and message.reply_markup and message.reply_markup.inline_keyboard:
-        texts = [button.text for row in message.reply_markup.inline_keyboard for button in row]
-        for text in texts:
-            if containBlockedWords(text, pattern_button):
-                logger.debug("删除消息")
-                await message.delete()
-                logger.debug(f"ban {getUserInfo(message.from_user)}")
-                await context.bot.ban_chat_member(message.chat_id, message.from_user.id)
-                break
+    await checkButtonBlockContent(message, context)
 
     # 处理不同的转发消息类型
     for message_type, handler in message_handlers.items():
         if getattr(message, message_type):
-            logger.info(f"{message_type} type of forwarded message({message.id}) from ({name})({id})")
+            logger.info(f"received {message_type} type of forwarded message({message.id}) from {message_origin_info}")
             if handler: await handler(update, context)
             break
     else:
-        logger.info(f"unknown types of forwarded message from ({name})({id})")
+        logger.info(f"unmatch types of forwarded message from {message_origin_info}")
         logger.debug(message)
-
-# async def handleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
-#     """处理所有非转发消息"""
-
-#     is_edit = bool(update.edited_message)
-#     message = update.edited_message if is_edit else update.message
-#     caption = message.caption              # 说明文字
-#     is_reply = bool(message.reply_to_message)   # 回复其他消息
-
-#     # 处理不同消息类型
-#     for message_type, handler in message_handlers.items():
-#         if getattr(message, message_type):
-#             log_text = f"{message_type} message({message.id}) from {getUserInfo(message.from_user)}"
-#             logger.info(log_text)
-#             if handler: await handler(update, context)
-#             break
-#     else:
-#         logger.info(f"unknown types of forwarded message from {getUserInfo(message.from_user)}")
-#         logger.debug(message)

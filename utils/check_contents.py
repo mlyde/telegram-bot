@@ -10,7 +10,7 @@ from core.block_words import block_worlds_json, pattern_bio, pattern_button, pat
 from core.block_emoji import block_emoji_dict
 from utils.get_info import getChatInfo, getStickerInfo, getUserInfo
 
-from telegram import User, Chat, ChatFullInfo, Message
+from telegram import User, Chat, ChatFullInfo, Message, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 pattern_list: list = [pattern_bio, pattern_button, pattern_chatname, pattern_group_message, pattern_user_id, pattern_username]
@@ -53,8 +53,7 @@ def containBlockedEmojiId(emoji_id: str, blocked_emoji_dict: dict[str, list[str]
 def containBlockedEmojiHtml(message_html: str, blocked_emoji_dict: dict[str, list[str]]) -> bool:
     """ 判断是否包含屏蔽会员表情, 含有则返回 True """
 
-    emoji_ids = re.findall("<tg-emoji emoji-id=\"([0-9]{19})\">(?:.*?)</tg-emoji>", message_html)
-    if emoji_ids:
+    if emoji_ids := re.findall("<tg-emoji emoji-id=\"([0-9]{19})\">(?:.*?)</tg-emoji>", message_html):
         return any(any(emoji_id in li  for li in blocked_emoji_dict.values())  for emoji_id in emoji_ids)
     return False
 
@@ -90,7 +89,7 @@ async def checkUserBlockContent(context: ContextTypes.DEFAULT_TYPE, chat: Chat, 
         return False
 
 async def checkMessageBlockContent(message: Message, context: ContextTypes.DEFAULT_TYPE):
-    """检查用户发出的消息的屏蔽词, 并封禁用户"""
+    """检查用户发出的消息的屏蔽词, 删除并并封禁用户"""
 
     # 违禁词或违禁会员表情
     if containBlockedWords(message.text, pattern_group_message) or containBlockedEmojiHtml(message.text_html, block_emoji_dict):
@@ -101,7 +100,21 @@ async def checkMessageBlockContent(message: Message, context: ContextTypes.DEFAU
         await context.bot.ban_chat_member(message.chat_id, message.from_user.id)
         return True
 
-    # 从数据库中移除用户
+    return False
+
+async def checkButtonBlockContent(message: Message, context: ContextTypes.DEFAULT_TYPE):
+    """检测按钮中的屏蔽词, 删除并封禁用户"""
+
+    if message and message.reply_markup and message.reply_markup.inline_keyboard:
+        texts = [button.text for row in message.reply_markup.inline_keyboard for button in row]
+        for text in texts:
+            if containBlockedWords(text, pattern_button):
+                logger.debug("删除消息")
+                await message.delete()
+                logger.debug(f"ban {getUserInfo(message.from_user)}")
+                await context.bot.ban_chat_member(message.chat_id, message.from_user.id)
+                return True
+
     return False
 
 def userIsActivity(chat_id: int, user_id: int):

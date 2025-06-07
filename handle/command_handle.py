@@ -72,11 +72,7 @@ async def helpCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def captchaCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """标记用户, 由 bot 向用户发起一次验证"""   # 未使用
 
-    if update.message:
-        message = update.message
-    else:
-        # 若编辑消息后的命令
-        message = update.edited_message
+    message = update.message if update.edited_message is None else update.edited_message
     args = context.args
     logger.info(f"/captcha from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
 

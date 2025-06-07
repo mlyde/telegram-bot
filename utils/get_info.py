@@ -5,7 +5,11 @@
 import logging
 logger = logging.getLogger(__name__)
 
-from telegram import Update, User, Chat, Sticker, Audio, Video, Location
+from telegram import (
+    Update, User, Chat,
+    MessageOriginUser, MessageOriginChat, MessageOriginChannel, MessageOriginHiddenUser,
+    Sticker, Audio, Video, Location, Document, Voice, PhotoSize
+    )
 from telegram.ext import ContextTypes
 
 
@@ -23,21 +27,89 @@ def getChatInfo(chat: Chat) -> str:
     link = chat.username if hasattr(chat, "username") else '' if chat.username else ''
     return f"({name})(@{link})({chat.id})"
 
+def getMessageOriginInfo(forward_origin: MessageOriginUser | MessageOriginHiddenUser | MessageOriginChat | MessageOriginChannel) -> str:
+    """获取消息来源的信息"""
+
+    if forward_origin.type == forward_origin.USER:
+        # 用户
+        return getUserInfo(forward_origin.sender_user)
+    elif forward_origin.type == forward_origin.HIDDEN_USER:
+        # 隐藏用户名的用户
+        name = forward_origin.sender_user_name
+        link = id = None
+        return f"({name})(@{link})({id})"
+    elif forward_origin.type == forward_origin.CHAT:
+        # 群
+        return getChatInfo(forward_origin.sender_chat)
+    elif forward_origin.type == forward_origin.CHANNEL:
+        # 频道
+        message_id = forward_origin.message_id
+        return getChatInfo(forward_origin.chat)
+
 def getStickerInfo(sticker: Sticker) -> str:
-    """ 返回贴纸的 贴纸表情emoji+贴纸id+贴纸包名 """
+    """贴纸信息 - 贴纸表情emoji+贴纸包名+贴纸id"""
 
-    return f"({sticker.emoji})({sticker.file_id})({sticker.set_name})"
+    return f"({sticker.emoji})({sticker.set_name})({sticker.file_unique_id})"
 
-async def getEmojiStickers(update: Update, context: ContextTypes.DEFAULT_TYPE, emoji_id: str):
+async def getStickerSetInfo(update: Update, context: ContextTypes.DEFAULT_TYPE, set_name: str) -> str:
+    """sticker set 贴纸包信息"""
 
-    sticker_set = await context.bot.getCustomEmojiStickers(["emoji_id"])
-    getStickerInfo(sticker_set)
-    return sticker_set
+    sticker_set = await context.bot.get_sticker_set(set_name) # 贴纸包详细内容
+    name = sticker_set.name      # id
+    title = sticker_set.title
+    sticker_type = sticker_set.sticker_type
+    stickers: tuple = sticker_set.stickers  # 贴纸包内容
+
+    return f"({title})({name})({sticker_type})(number: {len(stickers)})"
+
+def getLocationInfo(location: Location) -> str:
+    """位置信息"""
+
+    longitude, latitude = location.longitude, location.latitude # 经度, 纬度
+    return f"({longitude}, {latitude})"
+
+def getCommonFileInfo(file: Document) -> str:
+    """一般文件的通用信息"""
+
+    name = file.file_name
+    mime_type = file.mime_type
+    size = file.file_size  # bytes
+    unique_id = file.file_unique_id
+
+    return f"({unique_id})({name})({mime_type})(size: {size})"
+
+def getMediaCommonInfo(media: Voice) -> str:
+    """voice 等媒体文件的通用信息"""
+
+    duration = media.duration
+    return getCommonFileInfo(media) + f"(duration: {duration})"
 
 def getAudioInfo(audio: Audio) -> str:
-    """返回 audio 的 标题+演唱者+文件名"""
+    """audio 音频的信息"""
 
     title = audio.title
     performer = audio.performer
-    file_name = audio.file_name
-    return f"({title})({performer})({file_name})"
+
+    return getMediaCommonInfo(audio) + f"({title} - {performer})"
+
+def getVideoInfo(video: Video) -> str:
+    """video 信息"""
+
+    width, height = video.width, video.height
+    return getMediaCommonInfo(video) + f"({width} x {height})"
+
+def getPhotoSizeInfo(photo_size: tuple[PhotoSize]) -> str:
+    """照片信息"""
+
+    # [-1] 为原图, 只保留原图信息
+    photo_size = photo_size[-1:]
+    photo_list = []
+
+    for photo in photo_size:
+        unique_id = photo.file_unique_id
+        width, height = photo.width, photo.height
+        size = photo.file_size
+
+        photo_list.append(f"({unique_id})(size: {size})({width} x {height})")
+
+    return '|'.join(photo_list)

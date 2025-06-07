@@ -24,7 +24,6 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     chat = update.effective_chat
     chat_member = update.chat_member
     user = chat_member.new_chat_member.user
-    need_remove = False
 
     # old_member_status, new_member_status = chat_member.difference().get("status", (None, None)) # _chat_member.status 不一样时取出
     old_member_status, new_member_status = chat_member.old_chat_member.status, chat_member.new_chat_member.status
@@ -34,9 +33,12 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     else:
         logger.debug(f"{getUserInfo(user)}member status changed from '{old_member_status}' to '{new_member_status}'")
 
+    need_remove = False
+
     match new_member_status:    # 先判断状态变为了什么, 再判断之前是什么
         case ChatMemberStatus.BANNED:
             log_status_different("has been banned")
+            need_remove = True
         case ChatMemberStatus.RESTRICTED:   log_status_different("has been restricted")
         case ChatMemberStatus.ADMINISTRATOR:log_status_different("is the administrator")
         case ChatMemberStatus.OWNER:        log_status_different("is owner")
@@ -53,7 +55,7 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 case _: # 为新成员
                     log_status_different("is a member")
                     await checkUserBlockContent(context, chat, user)
-            need_remove = True
+            db_user_verification.addUser(chat.id, user.id)
         case _:
             logger.warning("unknown member status!")
 
