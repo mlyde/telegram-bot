@@ -1,14 +1,13 @@
 """
 返回一个东西的几个基本信息
 """
-
 import logging
 logger = logging.getLogger(__name__)
 
 from telegram import (
     Update, User, Chat,
     MessageOriginUser, MessageOriginChat, MessageOriginChannel, MessageOriginHiddenUser,
-    Sticker, Audio, Video, Location, Document, Voice, PhotoSize
+    Sticker, Audio, Video, Location, Document, Voice, PhotoSize, VideoNote, Story
     )
 from telegram.ext import ContextTypes
 
@@ -68,6 +67,14 @@ def getLocationInfo(location: Location) -> str:
     longitude, latitude = location.longitude, location.latitude # 经度, 纬度
     return f"({longitude}, {latitude})"
 
+def getStoryInfo(story: Story) -> str:
+    """story 信息"""
+
+    chat = story.chat
+    id = story.id
+
+    return f"(chat)(id)"
+
 def getCommonFileInfo(file: Document) -> str:
     """一般文件的通用信息"""
 
@@ -78,25 +85,46 @@ def getCommonFileInfo(file: Document) -> str:
 
     return f"({unique_id})({name})({mime_type})(size: {size})"
 
-def getMediaCommonInfo(media: Voice) -> str:
-    """voice 等媒体文件的通用信息"""
+def getVoiceInfo(voice: Voice) -> str:
+    """voice 信息"""
 
-    duration = media.duration
-    return getCommonFileInfo(media) + f"(duration: {duration})"
+    mime_type = voice.mime_type
+    size = voice.file_size
+    unique_id = voice.file_unique_id
+    duration = voice.duration
 
-def getAudioInfo(audio: Audio) -> str:
-    """audio 音频的信息"""
+    return f"({unique_id})({mime_type})(size: {size})(duration: {duration}s)"
 
-    title = audio.title
-    performer = audio.performer
+def getVideoNoteInfo(video_note: VideoNote) -> str:
+    """video note 圆形视频信息"""
 
-    return getMediaCommonInfo(audio) + f"({title} - {performer})"
+    size = video_note.file_size
+    unique_id = video_note.file_unique_id
+    duration = video_note.duration
+    length = video_note.length  # 宽 = 高 = 直径
+    # thumbnail = video_note.thumbnail
+
+    return f"({unique_id})(size: {size})(duration: {duration}s)(D = {length})"
 
 def getVideoInfo(video: Video) -> str:
     """video 信息"""
 
+    duration = video.duration
     width, height = video.width, video.height
-    return getMediaCommonInfo(video) + f"({width} x {height})"
+    thumbnail = video.thumbnail
+    # thumbnail_info = getPhotoSizeInfo(thumbnail)
+    # cover = video.cover
+
+    return getCommonFileInfo(video) + f"(duration: {duration}s)({width} x {height})"
+
+def getAudioInfo(audio: Audio) -> str:
+    """audio 音频的信息"""
+
+    duration = audio.duration
+    title = audio.title
+    performer = audio.performer
+
+    return getCommonFileInfo(audio) + f"(duration: {duration}s)({title} - {performer})"
 
 def getPhotoSizeInfo(photo_size: tuple[PhotoSize]) -> str:
     """照片信息"""

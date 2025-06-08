@@ -9,12 +9,11 @@ from core.static_config import static_config
 from core.block_words import pattern_group_message, pattern_button
 from core.database import db_user_verification
 from utils.get_info import (
-    getChatInfo, getStickerInfo, getUserInfo, 
-    getAudioInfo, getMessageOriginInfo, getCommonFileInfo,
-    getStickerSetInfo, getLocationInfo, getMediaCommonInfo, getAudioInfo, getVideoInfo, getPhotoSizeInfo
+    getChatInfo, getUserInfo, getMessageOriginInfo,
+    getAudioInfo, getCommonFileInfo, getStickerInfo, getStickerSetInfo, getStoryInfo,
+    getLocationInfo, getVoiceInfo, getAudioInfo, getVideoInfo, getPhotoSizeInfo, getVideoNoteInfo
     )
 from utils.check_contents import test_contain_all_block_words, checkMessageBlockContent, checkUserBlockContent, userIsActivity, checkButtonBlockContent
-
 
 directory: str = static_config.get("directory")
 admin_id_set: set = static_config.get("admin_id")
@@ -124,19 +123,27 @@ async def voiceHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     is_edit = bool(update.edited_message)
     message = update.edited_message if is_edit else update.message
-    voice_info = getMediaCommonInfo(message.voice)
+    voice_info = getVoiceInfo(message.voice)
     logReceiveMediaMessage(message, "voice", is_edit, voice_info)
 
     # voice_file = await context.bot.get_file(message.voice.file_id)
+
+async def videoNoteHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """圆形视频消息"""
+
+    is_edit = bool(update.edited_message)
+    message = update.edited_message if is_edit else update.message
+    video_note_info = getVideoNoteInfo(message.video_note)
+    logReceiveMediaMessage(message, "video note", is_edit, video_note_info)
 
 async def storyHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     is_edit = bool(update.edited_message)
     message = update.edited_message if is_edit else update.message
+    story_info = getStoryInfo(message.story)
 
     # story 类型好像只能转发到聊天
-    logger.info(f"received story({message.id}) from {getUserInfo(message.story.chat)} forwarded by {getUserInfo(message.from_user)} at {message.date}")
-    logger.debug(message)
+    logger.info(f"received story({message.id}) from {getUserInfo(message.story.chat)} forwarded by {getUserInfo(message.from_user)} at {message.date}: {story_info}")
 
 async def locationHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -144,6 +151,13 @@ async def locationHandleMessage(update: Update, context: ContextTypes.DEFAULT_TY
     message = update.edited_message if is_edit else update.message
     lal = getLocationInfo(message.location)
     logReceiveMediaMessage(message, "location", is_edit, lal)
+
+async def lastHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """未匹配的消息类型"""
+
+    is_edit = bool(update.edited_message)
+    message = update.edited_message if is_edit else update.message
+    logger.debug(message)
 
 # 不同类型消息对应的函数
 message_handlers = {
@@ -156,7 +170,7 @@ message_handlers = {
     'voice': voiceHandleMessage,
     'story': storyHandleMessage,
     'location': locationHandleMessage,
-    'video_note': None, # 圆形视频消息
+    "video_note": videoNoteHandleMessage,
 }
 
 async def forwardedHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):

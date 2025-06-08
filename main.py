@@ -25,7 +25,11 @@ from handle.message_handle import (
     voiceHandleMessage,
     storyHandleMessage,
     stickerHandleMessage,
-    documentHandleMessage
+    documentHandleMessage,
+    videoHandleMessage,
+    videoNoteHandleMessage,
+    locationHandleMessage,
+    lastHandleMessage,
 )
 from handle.other_handle import otherCommand
 from handle.reaction_handle import reactionHandle
@@ -42,12 +46,12 @@ defaults = Defaults(
     tzinfo=DEFAULT_TIMEZONE,  # 设置默认时区
 )
 
-def main() -> None:
+def main(drop_pending_updates=True) -> None:
 
     # Create the Application
     app = (Application.builder().token(TOKEN)
         .get_updates_proxy(PROXY).proxy(PROXY)
-        .rate_limiter(AIORateLimiter( max_retries=5))       # 最大失败请求重试次数
+        .rate_limiter(AIORateLimiter(max_retries=5))       # 最大失败请求重试次数
         .get_updates_read_timeout(30).read_timeout(30)      # 等待 Telegram 服务器响应的最长时间
         .get_updates_write_timeout(30).write_timeout(30)    # 等待写入操作 (上传文件) 完成的最长时间
         .get_updates_connect_timeout(20).connect_timeout(20)# 尝试连接到 Telegram 服务器的最长时间
@@ -71,8 +75,12 @@ def main() -> None:
     app.add_handler(MessageHandler(filters.AUDIO, audioHandleMessage))
     app.add_handler(MessageHandler(filters.VOICE, voiceHandleMessage))
     app.add_handler(MessageHandler(filters.STORY, storyHandleMessage))
+    app.add_handler(MessageHandler(filters.VIDEO, videoHandleMessage))
+    app.add_handler(MessageHandler(filters.VIDEO_NOTE, videoNoteHandleMessage))
+    app.add_handler(MessageHandler(filters.LOCATION, locationHandleMessage))
     app.add_handler(MessageHandler(filters.Sticker.ALL, stickerHandleMessage))
     app.add_handler(MessageHandler(filters.Document.ALL, documentHandleMessage))
+    app.add_handler(MessageHandler(filters.ALL, lastHandleMessage))     # 未被匹配的消息
     # app.add_handler(MessageHandler(filters.Regex("^Something else...$"), handleTextMessage))  # 捕获特定文本
     # app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS & filters.ChatType.GROUPS, chatMemberHandle))  # 群内入群消息提示
     # Reaction
@@ -86,7 +94,7 @@ def main() -> None:
 
     # Run
     logger.info("run polling...")
-    app.run_polling(allowed_updates=Update.ALL_TYPES, poll_interval=6, drop_pending_updates=False)
+    app.run_polling(allowed_updates=Update.ALL_TYPES, poll_interval=6, drop_pending_updates=drop_pending_updates)
 
 
 if __name__ == "__main__":
