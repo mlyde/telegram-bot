@@ -9,9 +9,10 @@ import re
 import datetime
 from core.static_config import static_config
 from utils.time import utc_timezone
-from utils.get_info import getChatInfo, getStickerInfo, getUserInfo
+from utils.get_info import getChatInfo, getStickerInfo, getUserInfo, getMessageContent
 from utils.other import addEmojisId
 from utils.lifecycle import stopApp
+from utils.admin import banMemberTime
 
 admin_id_set: set = static_config.get("admin_id")
 active_group_id_set = static_config.get("active_group_id")
@@ -19,12 +20,7 @@ active_group_id_set = static_config.get("active_group_id")
 async def otherCommand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """ 未匹配的命令 """
 
-    if hasattr(update, "message"):
-        message = update.message
-    else:
-        logger.debug("unknown message")
-        logger.debug(update) 
-        return
+    message, is_edit = getMessageContent(update)
     text = message.text
     # logger.debug(f"{text} from {message.chat.full_name}")
     logger.info(f"receive command({message.id}) from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date.astimezone(utc_timezone)}: {text}")
@@ -36,8 +32,8 @@ async def otherCommand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         match command:
             # case "flashconfig":
             #     bot_config.flash()
-            # case "flashcommand":
-            #     await resetBotCommand(update, context)
+            case "ban":
+                await banMemberTime(context, chat_id=-1001226170027, user_id=8085440182, hours=48)
             # case "flashemoji":  # 重新获取所有表情包id
             #     await flashEmojisId(context)
             case "addemoji":
@@ -60,17 +56,19 @@ async def otherCommand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 # async def unbanCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
 #     """自助解除封禁, 暂不使用"""
 
+#     message, is_edit = getMessageContent(update)
+
 #     chat_id = active_group_id_set[0]    # 先询问要解除哪个群的封禁
 #     if chat_id not in active_group_id_set: return False
 
 #     admins = await context.bot.get_chat_administrators(chat_id)
 #     if any(admin.user.id == context.bot.id for admin in admins):    # bot 是管理员
-#         member = await context.bot.get_chat_member(chat_id, update.message.from_user.id)
+#         member = await context.bot.get_chat_member(chat_id, message.from_user.id)
 #         if member.status == ChatMemberStatus.BANNED:        # 用户已被ban
-#             if await context.bot.unban_chat_member(chat_id, update.message.from_user.id):
-#                 await update.message.reply_text("已解除禁言, 你可以再次加入群组了!")
-#                 logger.info(f"解除禁言: {update.message.from_user.full_name}")
+#             if await context.bot.unban_chat_member(chat_id, message.from_user.id):
+#                 await message.reply_text("已解除禁言, 你可以再次加入群组了!")
+#                 logger.info(f"解除禁言: {message.from_user.full_name}")
 #         else:
-#             await update.message.reply_text("You're not on the ban list!")
+#             await message.reply_text("You're not on the ban list!")
 #     else:
-#         await update.message.reply_text("I can't unban for you!")
+#         await message.reply_text("I can't unban for you!")

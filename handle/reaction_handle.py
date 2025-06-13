@@ -14,4 +14,3 @@ async def reactionHandle(update: Update, context: CallbackContext) -> None:
 
     reaction = update.message_reaction
     logger.info(f"Reaction {reaction.new_reaction} from {getUserInfo(reaction.user)} in {getChatInfo(reaction.chat)} for message({reaction.message_id}) at {reaction.date.astimezone(utc_timezone)}.")
-

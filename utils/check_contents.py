@@ -1,6 +1,4 @@
-"""
-检查是否包含屏蔽词
-"""
+"""检查是否包含屏蔽词"""
 import logging
 logger = logging.getLogger(__name__)
 
@@ -117,16 +115,16 @@ async def checkButtonBlockContent(message: Message, context: ContextTypes.DEFAUL
 
     return False
 
-def userIsActivity(chat_id: int, user_id: int):
+def userIsActivity(chat: Chat, user: User):
     """查询活跃, 并记录用户活跃"""
 
-    if db_user_verification.isExist(chat_id, user_id):
-        if db_user_verification.getActivity(chat_id, user_id):
+    if db_user_verification.isExist(chat, user):
+        if db_user_verification.getActivity(chat, user):
             # 活跃过, 直接返回
             return True
     else:
         # 如果用户没有记录, 则记录
-        db_user_verification.addUser(chat_id, user_id)
+        db_user_verification.addUser(chat, user)
 
-    db_user_verification.setActivity(chat_id, user_id)
+    db_user_verification.setActivity(chat, user)
     return False

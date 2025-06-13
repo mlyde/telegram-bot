@@ -1,6 +1,4 @@
-"""
-用户在群中的状态发生变化的处理函数
-"""
+"""用户在群中的状态发生变化的处理函数"""
 import logging
 logger = logging.getLogger(__name__)
 
@@ -18,8 +16,10 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     """ 新成员加入时, 对名字\简介进行屏蔽词检测 """
 
     def log_status_different(middle_message: str):
-        """简化输出函数, 类似格式的成员状态信息"""
-        logger.info(f"{getUserInfo(user)} {middle_message} by {getUserInfo(chat_member.from_user)} in {getChatInfo(chat)} at {chat_member.date}.")
+        """简化输出函数, 不同状态信息"""
+        logger.info(f"{getUserInfo(user)} {middle_message} by "\
+                    + ("themself" if user.id == chat_member.from_user.id else getUserInfo(chat_member.from_user))\
+                    + f" in {getChatInfo(chat)} at {chat_member.date}.")
 
     chat = update.effective_chat
     chat_member = update.chat_member
@@ -55,9 +55,9 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 case _: # 为新成员
                     log_status_different("is a member")
                     await checkUserBlockContent(context, chat, user)
-            db_user_verification.addUser(chat.id, user.id)
+            db_user_verification.addUser(chat, user)
         case _:
             logger.warning("unknown member status!")
 
     if need_remove:
-        db_user_verification.remove(chat.id, user.id)
+        db_user_verification.remove(chat, user)

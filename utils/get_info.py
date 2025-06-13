@@ -1,11 +1,9 @@
-"""
-返回一个东西的几个基本信息
-"""
+"""返回基本信息"""
 import logging
 logger = logging.getLogger(__name__)
 
 from telegram import (
-    Update, User, Chat,
+    Update, User, Chat, Message,
     MessageOriginUser, MessageOriginChat, MessageOriginChannel, MessageOriginHiddenUser,
     Sticker, Audio, Video, Location, Document, Voice, PhotoSize, VideoNote, Story
     )
@@ -73,7 +71,7 @@ def getStoryInfo(story: Story) -> str:
     chat = story.chat
     id = story.id
 
-    return f"(chat)(id)"
+    return f"({chat})({id})"
 
 def getCommonFileInfo(file: Document) -> str:
     """一般文件的通用信息"""
@@ -141,3 +139,11 @@ def getPhotoSizeInfo(photo_size: tuple[PhotoSize]) -> str:
         photo_list.append(f"({unique_id})(size: {size})({width} x {height})")
 
     return '|'.join(photo_list)
+
+def getMessageContent(update: Update):
+    """判断是否为编辑的消息, 返回消息内容"""
+
+    is_edit = bool(update.edited_message)
+    message: Message = update.edited_message if is_edit else update.message
+
+    return message, is_edit

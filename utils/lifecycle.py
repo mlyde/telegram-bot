@@ -1,3 +1,4 @@
+"""application 的启停管理"""
 import logging
 logger = logging.getLogger(__name__)
 

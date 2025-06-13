@@ -1,7 +1,4 @@
-"""
-配置基本日志参数
-"""
-
+"""配置基本日志参数"""
 from pathlib import Path
 import logging
 from logging import Formatter

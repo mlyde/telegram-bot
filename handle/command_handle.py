@@ -1,6 +1,4 @@
-"""
-CommandHandler 的 callback 函数
-"""
+"""CommandHandler 的 callback 函数"""
 import logging
 logger = logging.getLogger(__name__)
 
@@ -12,8 +10,7 @@ import time
 import datetime
 
 from core.static_config import static_config
-from utils.time import utc_timezone
-from utils.get_info import getChatInfo, getStickerInfo, getUserInfo
+from utils.get_info import getChatInfo, getStickerInfo, getUserInfo, getMessageContent
 from utils.other import getMD5, choiceOne
 from utils.time import last_start_up_time
 
@@ -23,7 +20,7 @@ admin_id_set: set = static_config.get("admin_id")
 # Commands
 async def startCommand(update: Update, context: CallbackContext):
 
-    message = update.message if update.edited_message is None else update.edited_message
+    message, is_edit = getMessageContent(update)
     args = context.args # https://t.me/sdustbot?start=parameter 好像只能收到一个参数
     logger.info(f"/start with \"{' '.join(args)}\" from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
 
@@ -55,7 +52,7 @@ async def startCommand(update: Update, context: CallbackContext):
 
 async def uptimeCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    message = update.message if update.edited_message is None else update.edited_message
+    message, is_edit = getMessageContent(update)
     logger.info(f"/uptime from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
     text = "已运行时间: %.0f s" % (time.time() - last_start_up_time.stamp)
     logger.info(text)
@@ -72,7 +69,7 @@ async def helpCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def captchaCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """标记用户, 由 bot 向用户发起一次验证"""   # 未使用
 
-    message = update.message if update.edited_message is None else update.edited_message
+    message, is_edit = getMessageContent(update)
     args = context.args
     logger.info(f"/captcha from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
 
@@ -98,3 +95,15 @@ async def captchaCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(args)
     if message.chat.type == ChatType.PRIVATE:
         message.reply_text("验证")
+
+async def muteCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """禁言小时数, 群内回复指定消息, 将消息来源用户封禁"""
+
+    message, is_edit = getMessageContent(update)
+    mute_hour = 24 if context.args is None else int(context.args[0])
+    logger.info(f"/mute from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date} {mute_hour}")
+
+    # 删除消息, 保持消息干净, 防止跟风点击
+    await message.delete()
+
+    from_user_id = message.reply_to_message.from_user.id

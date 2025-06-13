@@ -1,6 +1,4 @@
-"""
-时间相关的变量, 函数
-"""
+"""时间相关的变量, 函数"""
 import logging
 logger = logging.getLogger(__name__)
 

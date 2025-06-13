@@ -1,48 +1,46 @@
+"""管理员操作"""
 import logging
 logger = logging.getLogger(__name__)
 
-from telegram import Update, ChatPermissions, User
+from telegram import Update, ChatPermissions, User, Chat
 from telegram.ext import ContextTypes
 import datetime
 
 from utils.get_info import getUserInfo, getChatInfo
 
-async def banMemberTime(context: ContextTypes.DEFAULT_TYPE, chat_id, user_id, hours=24):
-    """封禁用户一段时间"""
+_example = ChatPermissions(
+    can_send_messages = False,
+    can_send_polls = False,
+    can_send_other_messages = False,
+    can_add_web_page_previews = False,
+    can_change_info = False,
+    can_invite_users = False,
+    can_pin_messages = False,
+    can_manage_topics = False,
+    can_send_audios = False,
+    can_send_documents = False,
+    can_send_photos = False,
+    can_send_videos = False,
+    can_send_video_notes = False,
+    can_send_voice_notes = False,
+)
+all_permissions = ChatPermissions.all_permissions()
+no_permissions = ChatPermissions.no_permissions()
+mute_permission = ChatPermissions(can_send_messages = False)    # 其他发送权限自动失效
 
-    logger.debug(f"ban {user_id} in {chat_id} for {hours}h")
+async def banMemberTime(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: User, hours=24):
+    """封禁一段时间"""
+
+    logger.debug(f"ban {getUserInfo(user)} in {getChatInfo(chat)} for {hours}h")
     to_date = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=hours)
-    await context.bot.ban_chat_member(chat_id, user_id, until_date=to_date)
+    await context.bot.ban_chat_member(chat.id, user.id, until_date=to_date)
 
-async def changePermission(update: Update, context: ContextTypes.DEFAULT_TYPE, permission: bool):
-    """ 给予或禁止权限 """
+async def muteTime(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: User, hours: int):
+    """禁言一段时间"""
 
-    chat = update.message.chat
-    user = update.message.from_user
-
-    whether = bool(permission)
-    all_permissions = ChatPermissions(
-        can_send_messages = whether,
-        can_send_polls = whether,
-        can_send_other_messages = whether,
-        can_add_web_page_previews = whether,
-        can_change_info = whether,
-        can_invite_users = whether,
-        can_pin_messages = whether,
-        can_manage_topics = whether,
-        can_send_audios = whether,
-        can_send_documents = whether,
-        can_send_photos = whether,
-        can_send_videos = whether,
-        can_send_video_notes = whether,
-        can_send_voice_notes = whether,
-    )
-
-    await context.bot.restrict_chat_member(chat.id, user.id, all_permissions)
-    if whether:
-        logger.info(f"已给予 {getUserInfo(user)} 在 {getChatInfo(chat)} 的权限")
-    else:
-        logger.info(f"已禁止 {getUserInfo(user)} 在 {getChatInfo(chat)} 的权限")
+    logger.debug(f"mute {getUserInfo(user)} in {getChatInfo(chat)} for {hours}h")
+    to_date = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=hours)
+    await context.bot.restrict_chat_member(chat.id, user.id, mute_permission, until_date=to_date)
 
 # async def removeDeleteAccount(context: ContextTypes.DEFAULT_TYPE, chat_id: str | int):
 #     """ 移除群组的 delete account 账户    未实现!!! """

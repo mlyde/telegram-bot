@@ -11,7 +11,8 @@ from core.database import db_user_verification
 from utils.get_info import (
     getChatInfo, getUserInfo, getMessageOriginInfo,
     getAudioInfo, getCommonFileInfo, getStickerInfo, getStickerSetInfo, getStoryInfo,
-    getLocationInfo, getVoiceInfo, getAudioInfo, getVideoInfo, getPhotoSizeInfo, getVideoNoteInfo
+    getLocationInfo, getVoiceInfo, getAudioInfo, getVideoInfo, getPhotoSizeInfo, getVideoNoteInfo,
+    getMessageContent
     )
 from utils.check_contents import test_contain_all_block_words, checkMessageBlockContent, checkUserBlockContent, userIsActivity, checkButtonBlockContent
 
@@ -39,14 +40,13 @@ def logReceiveMediaMessage(message: Message, type: str, is_edit: bool, info: str
 # Message
 async def textHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    is_edit = bool(update.edited_message)
-    message = update.edited_message if is_edit else update.message
+    message, is_edit = getMessageContent(update)
     text = message.text
     message_type = message.chat.type
     logReceiveMediaMessage(message, "text", is_edit, text)
 
     # 如果用户是第一次活跃, 二次检查用户页内容
-    if not userIsActivity(chat_id=message.chat.id, user_id=message.from_user.id):
+    if not userIsActivity(chat=message.chat, user=message.from_user):
         await checkUserBlockContent(context, message.chat, message.from_user)
 
     if message_type in groups_set:
@@ -59,12 +59,11 @@ async def textHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.info(text)
 
         text = "匹配成功" if test_contain_all_block_words(text) else "不含屏蔽词"
-        await update.message.reply_text(text)
+        await message.reply_text(text)
 
 async def photoHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    is_edit = bool(update.edited_message)
-    message = update.edited_message if is_edit else update.message
+    message, is_edit = getMessageContent(update)
     photo_info = getPhotoSizeInfo(message.photo)
     logReceiveMediaMessage(message, "photo", is_edit, photo_info)
 
@@ -77,8 +76,7 @@ async def photoHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def videoHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    is_edit = bool(update.edited_message)
-    message = update.edited_message if is_edit else update.message
+    message, is_edit = getMessageContent(update)
     video_info = getVideoInfo(message.video)
     logReceiveMediaMessage(message, "video", is_edit, video_info)
 
@@ -91,16 +89,14 @@ async def videoHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def documentHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    is_edit = bool(update.edited_message)
-    message = update.edited_message if is_edit else update.message
+    message, is_edit = getMessageContent(update)
     document_info = getCommonFileInfo(message.document)
 
     logReceiveMediaMessage(message, "document", is_edit, document_info)
 
 async def stickerHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    is_edit = bool(update.edited_message)
-    message = update.edited_message if is_edit else update.message
+    message, is_edit = getMessageContent(update)
     sticker_info = getStickerInfo(message.sticker)
     logReceiveMediaMessage(message, "sticker", is_edit, sticker_info)
 
@@ -113,16 +109,14 @@ async def stickerHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYP
 async def audioHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ 音乐或其他类型的音频内容 """
 
-    is_edit = bool(update.edited_message)
-    message = update.edited_message if is_edit else update.message
+    message, is_edit = getMessageContent(update)
     audio_info = getAudioInfo(message.audio)
     logReceiveMediaMessage(message, "audio", is_edit, audio_info)
 
 async def voiceHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ 语音消息 """
 
-    is_edit = bool(update.edited_message)
-    message = update.edited_message if is_edit else update.message
+    message, is_edit = getMessageContent(update)
     voice_info = getVoiceInfo(message.voice)
     logReceiveMediaMessage(message, "voice", is_edit, voice_info)
 
@@ -131,15 +125,13 @@ async def voiceHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def videoNoteHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """圆形视频消息"""
 
-    is_edit = bool(update.edited_message)
-    message = update.edited_message if is_edit else update.message
+    message, is_edit = getMessageContent(update)
     video_note_info = getVideoNoteInfo(message.video_note)
     logReceiveMediaMessage(message, "video note", is_edit, video_note_info)
 
 async def storyHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    is_edit = bool(update.edited_message)
-    message = update.edited_message if is_edit else update.message
+    message, is_edit = getMessageContent(update)
     story_info = getStoryInfo(message.story)
 
     # story 类型好像只能转发到聊天
@@ -147,16 +139,14 @@ async def storyHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def locationHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    is_edit = bool(update.edited_message)
-    message = update.edited_message if is_edit else update.message
+    message, is_edit = getMessageContent(update)
     lal = getLocationInfo(message.location)
     logReceiveMediaMessage(message, "location", is_edit, lal)
 
 async def lastHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """未匹配的消息类型"""
 
-    is_edit = bool(update.edited_message)
-    message = update.edited_message if is_edit else update.message
+    message, is_edit = getMessageContent(update)
     logger.debug(message)
 
 # 不同类型消息对应的函数
