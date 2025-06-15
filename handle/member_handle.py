@@ -2,13 +2,13 @@
 import logging
 logger = logging.getLogger(__name__)
 
-from core.database import db_user_verification
-from utils.get_info import getChatInfo, getStickerInfo, getUserInfo
-from utils.check_contents import checkUserBlockContent
-
 from telegram.constants import ChatMemberStatus
 from telegram import Update
 from telegram.ext import ContextTypes
+
+from core.database import db_user_verification
+from utils.get_info import getChatInfo, getStickerInfo, getUserInfo
+from utils.check_contents import checkUserBlockContent
 
 
 # ChatMember

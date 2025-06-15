@@ -1,10 +1,11 @@
-"""管理员操作"""
+"""复杂管理员操作"""
 import logging
 logger = logging.getLogger(__name__)
 
+import datetime
+
 from telegram import Update, ChatPermissions, User, Chat
 from telegram.ext import ContextTypes
-import datetime
 
 from utils.get_info import getUserInfo, getChatInfo
 
@@ -28,7 +29,7 @@ all_permissions = ChatPermissions.all_permissions()
 no_permissions = ChatPermissions.no_permissions()
 mute_permission = ChatPermissions(can_send_messages = False)    # 其他发送权限自动失效
 
-async def banMemberTime(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: User, hours=24):
+async def banTime(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: User, hours=24):
     """封禁一段时间"""
 
     logger.debug(f"ban {getUserInfo(user)} in {getChatInfo(chat)} for {hours}h")

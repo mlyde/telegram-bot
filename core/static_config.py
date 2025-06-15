@@ -3,14 +3,14 @@ logger = logging.getLogger(__name__)
 
 import yaml
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 STATIC_CONFIG_FILENAME = "config/static_config.yaml"
 
 class StaticConfigLoader:
     """配置加载器(单例模式)"""
     _instance = None
-    _static_config: Dict[str, Any] = None
+    _static_config: dict[str, Any] = None
 
     # 确保只有一个实例
     def __new__(cls):
@@ -32,7 +32,7 @@ class StaticConfigLoader:
             raise RuntimeError(f"yaml Error: {str(e)}")
 
     @property
-    def config(self) -> Dict[str, Any]:
+    def config(self) -> dict[str, Any]:
         """安全获取配置字典的副本"""
         return self._static_config.copy()
 

@@ -25,7 +25,7 @@ def logReceiveMediaMessage(message: Message, type: str, is_edit: bool, info: str
     """整合媒体消息接收日志"""
 
     is_reply = bool(message.reply_to_message)
-    caption = message.caption
+    caption = message.caption_markdown_v2
 
     # 媒体消息
     log_text = (f"receive edit {type}({message.id})" if is_edit else f"receive {type}({message.id})")\
@@ -41,7 +41,7 @@ def logReceiveMediaMessage(message: Message, type: str, is_edit: bool, info: str
 async def textHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     message, is_edit = getMessageContent(update)
-    text = message.text
+    text = message.text_markdown_v2
     message_type = message.chat.type
     logReceiveMediaMessage(message, "text", is_edit, text)
 
@@ -55,11 +55,8 @@ async def textHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif message.from_user.id in admin_id_set:
         # 将管理员发给 bot 的内容做屏蔽词检测, 全匹配
-        text = message.text
-        logger.info(text)
-
-        text = "匹配成功" if test_contain_all_block_words(text) else "不含屏蔽词"
-        await message.reply_text(text)
+        text_reply = "匹配成功" if test_contain_all_block_words(text) else "不含屏蔽词"
+        await message.reply_text(text_reply)
 
 async def photoHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
@@ -91,7 +88,6 @@ async def documentHandleMessage(update: Update, context: ContextTypes.DEFAULT_TY
 
     message, is_edit = getMessageContent(update)
     document_info = getCommonFileInfo(message.document)
-
     logReceiveMediaMessage(message, "document", is_edit, document_info)
 
 async def stickerHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -133,8 +129,6 @@ async def storyHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     message, is_edit = getMessageContent(update)
     story_info = getStoryInfo(message.story)
-
-    # story 类型好像只能转发到聊天
     logger.info(f"received story({message.id}) from {getUserInfo(message.story.chat)} forwarded by {getUserInfo(message.from_user)} at {message.date}: {story_info}")
 
 async def locationHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):

@@ -1,18 +1,18 @@
 import logging
 logger = logging.getLogger(__name__)
 
+import re
+import datetime
+
 from telegram import Update, ChatFullInfo, Chat, StickerSet, MessageOrigin, User, Sticker   # 变量注释
 from telegram.ext import ContextTypes
 from telegram.constants import ChatType, ChatMemberStatus
 
-import re
-import datetime
 from core.static_config import static_config
-from utils.time import utc_timezone
+from core.block_emoji import addEmojisId, flashEmojisId
 from utils.get_info import getChatInfo, getStickerInfo, getUserInfo, getMessageContent
-from utils.other import addEmojisId
 from utils.lifecycle import stopApp
-from utils.admin import banMemberTime
+from utils.admin import banTime
 
 admin_id_set: set = static_config.get("admin_id")
 active_group_id_set = static_config.get("active_group_id")
@@ -23,33 +23,28 @@ async def otherCommand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     message, is_edit = getMessageContent(update)
     text = message.text
     # logger.debug(f"{text} from {message.chat.full_name}")
-    logger.info(f"receive command({message.id}) from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date.astimezone(utc_timezone)}: {text}")
+    logger.info(f"receive command({message.id}) from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}: {text}")
 
     # 分离命令和参数
     command: str; arg: str
     command, arg = re.findall(r"^/([\w-]+)\s*(.*)$", text)[0]
     if message.from_user.id in admin_id_set:
         match command:
-            # case "flashconfig":
-            #     bot_config.flash()
-            case "ban":
-                await banMemberTime(context, chat_id=-1001226170027, user_id=8085440182, hours=48)
-            # case "flashemoji":  # 重新获取所有表情包id
-            #     await flashEmojisId(context)
+            case "flashemoji":
+                await flashEmojisId(context)
             case "addemoji":
                 await addEmojisId(context, arg.split("https://t.me/addemoji/")[-1], force=True)
-            # case "re": # 转义正则中的特殊字符
-            #     logger.info(re.escape(arg))
-            # case "chdes":   # 更改 bot 自己的 description
-            #     await context.bot.set_my_description(description="Anti-Spam for @shandongkeji")
+            case "re": # 转义正则中的特殊字符
+                logger.info(re.escape(arg))
             case "stop":
                 await stopApp(update, context)
+            # case "ban":
+                # await banMemberTime(context, chat_id=-1001226170027, user_id=8085440182, hours=48)
             case "test":
                 logger.debug("/test")
                 response = ...
                 print(response)
                 logger.debug('')
-
     else:
         await message.reply_text("unknown command")
 

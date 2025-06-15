@@ -3,13 +3,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 import re
-from core.database import db_user_verification
-from core.block_words import block_worlds_json, pattern_bio, pattern_button, pattern_chatname, pattern_group_message, pattern_user_id, pattern_username
-from core.block_emoji import block_emoji_dict
-from utils.get_info import getChatInfo, getStickerInfo, getUserInfo
 
 from telegram import User, Chat, ChatFullInfo, Message, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
+
+from core.database import db_user_verification
+from core.block_words import block_worlds_json, pattern_bio, pattern_button, pattern_chatname, pattern_group_message, pattern_user_id, pattern_username
+from core.block_emoji import block_emoji
+from utils.get_info import getChatInfo, getStickerInfo, getUserInfo
 
 pattern_list: list = [pattern_bio, pattern_button, pattern_chatname, pattern_group_message, pattern_user_id, pattern_username]
 
@@ -69,15 +70,22 @@ async def checkUserBlockContent(context: ContextTypes.DEFAULT_TYPE, chat: Chat, 
     need_ban = False
 
     # 名字违禁
-    if need_ban or containBlockedWords(user.full_name, pattern_username) or containBlockedWords(user.first_name, pattern_username) or containBlockedWords(user.username, pattern_user_id):
-        need_ban = True
+    need_ban = (
+        need_ban
+        or containBlockedWords(user.full_name, pattern_username)
+        or containBlockedWords(user.first_name, pattern_username)
+        or containBlockedWords(user.username, pattern_user_id)
+    )
 
     # 名字的表情 或 主页中挂的群 或 简介违禁
-    user_chat: ChatFullInfo = await context.bot.get_chat(user.id)
-    logger.debug(user_chat)
-    if need_ban or containBlockedWords(user_chat.bio, pattern_bio) or containBlockedWords(user_chat.effective_name, pattern_chatname) \
-        or (containBlockedEmojiId(user_chat.emoji_status_custom_emoji_id, block_emoji_dict) if hasattr(user_chat, "emoji_status_custom_emoji_id") else False):
-        need_ban = True
+    if not need_ban:
+        user_chat: ChatFullInfo = await context.bot.get_chat(user.id)
+        logger.debug(user_chat)
+        need_ban = (
+            containBlockedWords(user_chat.bio, pattern_bio)
+            or containBlockedWords(user_chat.effective_name, pattern_chatname)
+            or (containBlockedEmojiId(user_chat.emoji_status_custom_emoji_id, block_emoji.dict) if hasattr(user_chat, "emoji_status_custom_emoji_id") else False)
+        )
 
     if need_ban:
         logger.debug(f"ban {getUserInfo(user)}")
@@ -90,7 +98,7 @@ async def checkMessageBlockContent(message: Message, context: ContextTypes.DEFAU
     """检查用户发出的消息的屏蔽词, 删除并并封禁用户"""
 
     # 违禁词或违禁会员表情
-    if containBlockedWords(message.text, pattern_group_message) or containBlockedEmojiHtml(message.text_html, block_emoji_dict):
+    if containBlockedWords(message.text, pattern_group_message) or containBlockedEmojiHtml(message.text_html, block_emoji.dict):
         logger.debug(f"删除消息 {message.id}")
         await message.delete()
         # await changePermission(update, context, False)

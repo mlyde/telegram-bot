@@ -8,7 +8,7 @@ from telegram import Chat, User
 from utils.get_info import getChatInfo, getUserInfo
 
 class Database:
-    def __init__(self, table_name: str, db_path: str = ":memory:"):
+    def __init__(self, db_path: str = ":memory:"):
 
         if db_path != ":memory:":
             # 创建父文件夹
@@ -17,7 +17,7 @@ class Database:
         # 连接数据库, 如果 .db 文件不存在会自动创建
         self.conn = sqlite3.connect(db_path)
         self.cursor = self.conn.cursor()
-        self.table_name = table_name
+        self.table_name = "user_verification"
 
         # 创建表, 若更改了 key, 需要手动删除 .db 文件, 重新创建
         self._createTable()
@@ -162,9 +162,9 @@ class Database:
             self.cursor.execute(f'''DELETE FROM {self.table_name}
                         WHERE user_id=? AND chat_id=?''',
                         (user.id, chat.id))
-
-        logger.debug(f"database: delete {getUserInfo(user)} in {getChatInfo(chat)}")
-        return self.cursor.rowcount
+        rowcount = self.cursor.rowcount
+        if rowcount: logger.debug(f"database: delete {getUserInfo(user)} in {getChatInfo(chat)}")
+        return rowcount
 
     def __enter__(self):
         return self
@@ -173,13 +173,13 @@ class Database:
         self.conn.close()
 
 
-db_user_verification = Database("user_verification", db_path="config/user_verification.db")
+db_user_verification = Database(db_path="config/user_verification.db")
 
 
 if __name__ == "__main__":
 
     try:
-        print("\All data:")
+        print("All data:")
         datas = db_user_verification.readAll()
         for data in datas:
             print(data)
