@@ -1,0 +1,19 @@
+# 不同位置的屏蔽词均使用正则匹配
+username: [
+    "xxxxxx",
+]
+userid: [
+    "xxxxxx",
+]
+bio: [
+    "xxxxxx",
+]
+chatname: [   # 主页中挂的频道 personal_chat
+    "xxxxxx",
+]
+message: [
+    "xxxxxx",
+]
+button: [
+    "xxxxxx",
+]

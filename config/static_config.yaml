@@ -1,0 +1,19 @@
+# Telegram Bot token
+token: 0000000000:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+# proxy: http://127.0.0.1:10880/
+proxy: socks5://127.0.0.1:10881/"
+# running path
+directory: /home/username/TelegramBot
+active_group_id: [
+  -1000000000000, # @groupname
+]
+debug_group_id: [
+  -1000000000000, # @groupname
+]
+level: DEBUG
+admin_id: [
+  1111111111, # @username
+]
+forward_to: 1111111111 # user_idor group_id
+help_content: help message 
+description: Anti-Spam for @xxxxxx
