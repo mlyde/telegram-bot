@@ -1,13 +1,16 @@
 """复杂管理员操作"""
 import logging
 logger = logging.getLogger(__name__)
-
 import datetime
 
-from telegram import Update, ChatPermissions, User, Chat
+from telegram import Update, ChatPermissions, User, Chat, Message
 from telegram.ext import ContextTypes
+from telegram.error import BadRequest
 
+from core.static_config import static_config
+from core.database import db_user_verification
 from utils.get_info import getUserInfo, getChatInfo
+forward_to_user_id: int = static_config.get("forward_to")
 
 _example = ChatPermissions(
     can_send_messages = False,
@@ -28,20 +31,48 @@ _example = ChatPermissions(
 all_permissions = ChatPermissions.all_permissions()
 no_permissions = ChatPermissions.no_permissions()
 mute_permission = ChatPermissions(can_send_messages = False)    # 其他发送权限自动失效
+unmute_permission = ChatPermissions(can_send_messages = True)
 
 async def banTime(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: User, hours=24):
     """封禁一段时间"""
-
     logger.debug(f"ban {getUserInfo(user)} in {getChatInfo(chat)} for {hours}h")
     to_date = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=hours)
     await context.bot.ban_chat_member(chat.id, user.id, until_date=to_date)
 
-async def muteTime(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: User, hours: int):
+async def muteTime(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: User, hours: int=0):
     """禁言一段时间"""
-
     logger.debug(f"mute {getUserInfo(user)} in {getChatInfo(chat)} for {hours}h")
     to_date = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=hours)
     await context.bot.restrict_chat_member(chat.id, user.id, mute_permission, until_date=to_date)
+
+async def unmute(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: User):
+    """取消禁言"""
+    logger.debug(f"unmute {getUserInfo(user)} in {getChatInfo(chat)}")
+    await context.bot.restrict_chat_member(chat.id, user.id, unmute_permission)
+
+async def getAdminList(context: ContextTypes.DEFAULT_TYPE, chat_id: int):
+    """获取群管理员列表"""
+    administrators = await context.bot.get_chat_administrators(chat_id)
+    return administrators
+
+async def banMemberDelay(context: ContextTypes.DEFAULT_TYPE):
+    """超时后将成员移除群组"""
+    job = context.job
+    chat = job.data.get("chat")
+    user = job.data.get("user")
+    if job:
+        await banTime(context, chat, user, 0.1)
+        logger.debug(f"{job.name} ban 6 min")
+
+async def captchaSuccess(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: User):
+    """验证成功"""
+    await unmute(context, chat, user)
+    db_user_verification.setVerified(chat, user)
+
+async def captchaFail(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: User):
+    """验证失败"""
+    await banTime(context, chat, user, hours=0.1)
+    db_user_verification.remove(chat, user)
 
 # async def removeDeleteAccount(context: ContextTypes.DEFAULT_TYPE, chat_id: str | int):
 #     """ 移除群组的 delete account 账户    未实现!!! """
@@ -59,10 +90,23 @@ async def muteTime(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: User, h
 #     finally:
 #         logger.info(f"已移除 {n} 个已注销账户")
 
-# async def messageExist(context: ContextTypes.DEFAULT_TYPE, chat_id, message_id):
-#     """检测一条消息是否存在    未实现!!!"""
+async def messageExist(context: ContextTypes.DEFAULT_TYPE, from_chat_id, message_id, chat_id=forward_to_user_id):
+    """检测一条消息是否存在"""
+    # 通过尝试转发消息间接判断消息是否存在
+    try:
+        message: Message = await context.bot.forward_message(chat_id=chat_id, from_chat_id=from_chat_id, message_id=message_id)
+        await message.delete()
+        return message
+    except BadRequest as e:
+        if "Message to forward not found" in str(e):
+            logger.info("消息不存在或已被删除")
+        elif "Chat not found" in str(e):
+            logger.info("目标聊天不存在")
+        else:
+            logger.info(f"转发失败: {e}")
+        return False
 
-#     # 通过尝试转发消息判断消息是否存在
-#     response = await context.bot.forward_message(chat_id=-1001226170027, from_chat_id=-1001226170027, message_id=21834)
-#     return True
-#     return False
+    # if message := await context.bot.get_message(chat_id=chat_id,message_id=int(message_id)):
+    #     return message
+    # else:
+    #     return False

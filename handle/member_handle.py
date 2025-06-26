@@ -7,9 +7,13 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from core.database import db_user_verification
+from core.static_config import static_config
+from utils.admin import muteTime, banMemberDelay
 from utils.get_info import getChatInfo, getStickerInfo, getUserInfo
 from utils.check_contents import checkUserBlockContent
-
+from utils.send import sendCaptchaMessage
+active_group_id_list: list = static_config.get("active_group_id")
+debug_group_id: int = static_config.get("debug_group_id")
 
 # ChatMember
 async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -54,10 +58,29 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 case ChatMemberStatus.OWNER:        log_status_different("is no longer the owner")
                 case _: # 为新成员
                     log_status_different("is a member")
-                    await checkUserBlockContent(context, chat, user)
-            db_user_verification.addUser(chat, user)
+                    is_baned = await checkUserBlockContent(context, chat, user)
+
+                    # 验证消息
+                    # if not is_baned and chat.id in active_group_id_set:
+                    if not is_baned and chat.id == debug_group_id:
+                        await muteTime(context, chat, user)
+
+                        # 超时后 ban
+                        context.job_queue.run_once(
+                            callback=banMemberDelay,
+                            when=360,  # second
+                            chat_id=chat.id,
+                            user_id=user.id,
+                            name=f"ban {getUserInfo(user)} from {getChatInfo(chat)}",
+                            data={"chat": chat, "user": user}
+                        )
+
+                        await sendCaptchaMessage(context=context, chat=chat, user=user)
+
+                    db_user_verification.addUser(chat, user)
         case _:
             logger.warning("unknown member status!")
+            logger.debug(new_member_status)
 
     if need_remove:
         db_user_verification.remove(chat, user)

@@ -1,57 +1,60 @@
 """CommandHandler 的 callback 函数"""
 import logging
 logger = logging.getLogger(__name__)
-
 import time
-import datetime
 
 from telegram import Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes, CallbackContext
+from telegram.ext import ContextTypes, CallbackContext, ConversationHandler
 from telegram.constants import ChatType, ParseMode
 
 from core.static_config import static_config
+from handle.conversation_handle import startCaptcha
+from utils.admin import banTime, muteTime
 from utils.get_info import getChatInfo, getStickerInfo, getUserInfo, getMessageContent
-from utils.other import getMD5, choiceOne
+from utils.other import getMD5
 from utils.time import last_start_up_time
+from utils.send import sendRandomStartReply, MyInlineKeyboard
 
-admin_id_set: set = static_config.get("admin_id")
-
+admin_id_list: list = static_config.get("admin_id")
+help_content = static_config.get("help_content")
 
 # Commands
-async def startCommand(update: Update, context: CallbackContext):
-
+async def startCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """开始对话"""
     message, is_edit = getMessageContent(update)
-    args = context.args # https://t.me/sdustbot?start=parameter 好像只能收到一个参数
-    logger.info(f"/start with \"{' '.join(args)}\" from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
+    logger.info(f"/start from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
 
+    # 删除消息, 防止群组其他人跟着点
     if message.chat.type != ChatType.PRIVATE:
         logger.debug("删除 /start 消息")
-        await message.delete()    # 删除消息, 防止其他人跟着点
-        return     # 只回复私聊
+        await message.delete()
+    else:
+        await sendRandomStartReply(message)
 
-    # 判断参数是否为对应正确验证参数
-    if args and args[0] == getMD5(message.chat.id):
-        await message.reply_text("captcha")
-        return
+    return ConversationHandler.END
 
-    today = datetime.datetime.now().date()
-    if today.month == 4 and today.day == 1:     # 愚人节彩蛋
-        await message.reply_text("418 I'm a teapot", reply_markup=ReplyKeyboardRemove())
-        return
+async def startArgsCommand(update: Update, context: CallbackContext):
+    """携带参数的对话, deep link, 最长 64 字符
+    https://t.me/sdustbot?start=parameter"""
+    message, is_edit = getMessageContent(update)
+    args = context.args
+    if not args: return await startCommand(update, context)
+    logger.info(f"/start with \"{' '.join(args)}\" from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
 
-    choice = choiceOne()
-    match choice:
-        case 'g':
-            await message.reply_text("Let's get started.", reply_markup=ReplyKeyboardRemove())
-        case 'h':
-            await message.reply_sticker(sticker='CAACAgUAAxkBAAICBGaThaP_3NPC0J301sJxAkwv81wZAAKNCQACCYSJVmS11JMf6Da9NQQ')   # 贴纸内容: 柴郡头猫猫趴在西瓜上
-        case 'i':
-            await message.reply_text("emm, may I help you?", reply_markup=ReplyKeyboardRemove())
-        case _:
-            await message.reply_text("Hello! I am a bot. <b>^_^</b>", reply_markup=ReplyKeyboardRemove(), parse_mode=ParseMode.HTML)
+    # 验证入群成员, 负数 id 为群 id, 进行过滤
+    # if args and args[0][:9]=="captcha_-":
+    if args and args[0][:8]=="captcha_":
+        chat_id = int(args[0].split('_')[1])
+        chat = await context.bot.get_chat(chat_id)
+        logger.info(f"{getUserInfo(message.from_user)} 发起在群组 {getChatInfo(chat)} 的验证")
+        context.user_data["chat"] = chat
+        return await startCaptcha(message, context)
+
+    logger.debug("/start: unknown args")
+    return ConversationHandler.END
 
 async def uptimeCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
+    """已运行时间"""
     message, is_edit = getMessageContent(update)
     logger.info(f"/uptime from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
     text = "已运行时间: %.0f s" % (time.time() - last_start_up_time.stamp)
@@ -59,21 +62,29 @@ async def uptimeCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await message.reply_text(text)
 
 async def helpCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
+    """帮助信息"""
     message = update.message
     logger.info(f"/help from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
 
-    text = "山东科技大学群组: @shandongkeji"
-    await message.reply_text(text)
+    text = help_content
+    await message.reply_text(text, parse_mode=ParseMode.MARKDOWN_V2)
+
+async def banCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """封禁用户一段时间或永久"""
+    message, is_edit = getMessageContent(update)
+    time = 0 if context.args is None else int(context.args[0])
+    logger.info(f"/ban from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date} for {time}h")
+    await message.delete()
+    if message.from_user.id in admin_id_list and message.reply_to_message is not None:
+        await banTime(context, message.chat, message.reply_to_message.from_user, time)
 
 async def captchaCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """标记用户, 由 bot 向用户发起一次验证"""   # 未使用
-
     message, is_edit = getMessageContent(update)
     args = context.args
     logger.info(f"/captcha from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
 
-    if message.from_user.id in admin_id_set:
+    if message.from_user.id in admin_id_list:
 
         if message.reply_to_message.from_user:
             # 标记的用户的 id
@@ -98,12 +109,13 @@ async def captchaCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def muteCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """禁言小时数, 群内回复指定消息, 将消息来源用户封禁"""
-
     message, is_edit = getMessageContent(update)
-    mute_hour = 24 if context.args is None else int(context.args[0])
-    logger.info(f"/mute from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date} {mute_hour}")
-
-    # 删除消息, 保持消息干净, 防止跟风点击
     await message.delete()
+    logger.info(f"/mute from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
+    if message.from_user.id in admin_id_list and message.reply_to_message is not None:
+        mute_hour = 0 if context.args is None else int(context.args[0])
 
-    from_user_id = message.reply_to_message.from_user.id
+        reply_to_user = message.reply_to_message.from_user
+
+        logger.info(f"mute {getUserInfo(reply_to_user)} in {getChatInfo(message.chat)} at {message.date} for {mute_hour}h")
+        await muteTime(context, message.chat, reply_to_user)

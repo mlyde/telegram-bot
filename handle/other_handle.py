@@ -1,8 +1,6 @@
 import logging
 logger = logging.getLogger(__name__)
-
 import re
-import datetime
 
 from telegram import Update, ChatFullInfo, Chat, StickerSet, MessageOrigin, User, Sticker   # 变量注释
 from telegram.ext import ContextTypes
@@ -12,14 +10,14 @@ from core.static_config import static_config
 from core.block_emoji import addEmojisId, flashEmojisId
 from utils.get_info import getChatInfo, getStickerInfo, getUserInfo, getMessageContent
 from utils.lifecycle import stopApp
-from utils.admin import banTime
+from utils.admin import banTime, getAdminList, messageExist
+from utils.send import sendReplyMarkup, sendCaptchaMessage
 
-admin_id_set: set = static_config.get("admin_id")
-active_group_id_set = static_config.get("active_group_id")
+admins_id_list: list = static_config.get("admin_id")
+active_group_id_list: list = static_config.get("active_group_id")
 
 async def otherCommand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """ 未匹配的命令 """
-
     message, is_edit = getMessageContent(update)
     text = message.text
     # logger.debug(f"{text} from {message.chat.full_name}")
@@ -28,7 +26,7 @@ async def otherCommand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     # 分离命令和参数
     command: str; arg: str
     command, arg = re.findall(r"^/([\w-]+)\s*(.*)$", text)[0]
-    if message.from_user.id in admin_id_set:
+    if message.from_user.id in admins_id_list:
         match command:
             case "flashemoji":
                 await flashEmojisId(context)
@@ -38,13 +36,9 @@ async def otherCommand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 logger.info(re.escape(arg))
             case "stop":
                 await stopApp(update, context)
-            # case "ban":
-                # await banMemberTime(context, chat_id=-1001226170027, user_id=8085440182, hours=48)
             case "test":
-                logger.debug("/test")
-                response = ...
-                print(response)
-                logger.debug('')
+                # await sendCaptchaMessage(context=context, chat=message.chat, user=message.from_user)
+                ...
     else:
         await message.reply_text("unknown command")
 

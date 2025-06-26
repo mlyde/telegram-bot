@@ -17,13 +17,12 @@ from utils.get_info import (
 from utils.check_contents import test_contain_all_block_words, checkMessageBlockContent, checkUserBlockContent, userIsActivity, checkButtonBlockContent
 
 directory: str = static_config.get("directory")
-admin_id_set: set = static_config.get("admin_id")
-active_group_id_set: set = static_config.get("active_group_id")
+admin_id_list: list = static_config.get("admin_id")
+active_group_id_list: list = static_config.get("active_group_id")
 groups_set = {ChatType.GROUP, ChatType.SUPERGROUP}
 
 def logReceiveMediaMessage(message: Message, type: str, is_edit: bool, info: str = None):
     """整合媒体消息接收日志"""
-
     is_reply = bool(message.reply_to_message)
     caption = message.caption_markdown_v2
 
@@ -39,7 +38,7 @@ def logReceiveMediaMessage(message: Message, type: str, is_edit: bool, info: str
 
 # Message
 async def textHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
+    """文本消息"""
     message, is_edit = getMessageContent(update)
     text = message.text_markdown_v2
     message_type = message.chat.type
@@ -50,16 +49,16 @@ async def textHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await checkUserBlockContent(context, message.chat, message.from_user)
 
     if message_type in groups_set:
-        if message.chat.id in active_group_id_set:
+        if message.chat.id in active_group_id_list:
             await checkMessageBlockContent(message, context)
 
-    elif message.from_user.id in admin_id_set:
+    elif message.from_user.id in admin_id_list:
         # 将管理员发给 bot 的内容做屏蔽词检测, 全匹配
         text_reply = "匹配成功" if test_contain_all_block_words(text) else "不含屏蔽词"
         await message.reply_text(text_reply)
 
 async def photoHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
+    """图片消息"""
     message, is_edit = getMessageContent(update)
     photo_info = getPhotoSizeInfo(message.photo)
     logReceiveMediaMessage(message, "photo", is_edit, photo_info)
@@ -72,7 +71,7 @@ async def photoHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE)
     #     logger.info(f"photo {photo_info} saved")
 
 async def videoHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
+    """视频消息"""
     message, is_edit = getMessageContent(update)
     video_info = getVideoInfo(message.video)
     logReceiveMediaMessage(message, "video", is_edit, video_info)
@@ -85,13 +84,13 @@ async def videoHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE)
     #     logger.info(f"video {video_info} saved")
 
 async def documentHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
+    """文件消息"""
     message, is_edit = getMessageContent(update)
     document_info = getCommonFileInfo(message.document)
     logReceiveMediaMessage(message, "document", is_edit, document_info)
 
 async def stickerHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
+    """贴纸消息"""
     message, is_edit = getMessageContent(update)
     sticker_info = getStickerInfo(message.sticker)
     logReceiveMediaMessage(message, "sticker", is_edit, sticker_info)
@@ -104,14 +103,12 @@ async def stickerHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def audioHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ 音乐或其他类型的音频内容 """
-
     message, is_edit = getMessageContent(update)
     audio_info = getAudioInfo(message.audio)
     logReceiveMediaMessage(message, "audio", is_edit, audio_info)
 
 async def voiceHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ 语音消息 """
-
     message, is_edit = getMessageContent(update)
     voice_info = getVoiceInfo(message.voice)
     logReceiveMediaMessage(message, "voice", is_edit, voice_info)
@@ -120,26 +117,24 @@ async def voiceHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 async def videoNoteHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """圆形视频消息"""
-
     message, is_edit = getMessageContent(update)
     video_note_info = getVideoNoteInfo(message.video_note)
     logReceiveMediaMessage(message, "video note", is_edit, video_note_info)
 
 async def storyHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-    message, is_edit = getMessageContent(update)
+    message, _ = getMessageContent(update)
     story_info = getStoryInfo(message.story)
     logger.info(f"received story({message.id}) from {getUserInfo(message.story.chat)} forwarded by {getUserInfo(message.from_user)} at {message.date}: {story_info}")
 
 async def locationHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
+    """位置消息"""
     message, is_edit = getMessageContent(update)
     lal = getLocationInfo(message.location)
     logReceiveMediaMessage(message, "location", is_edit, lal)
 
 async def lastHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """未匹配的消息类型"""
-
     message, is_edit = getMessageContent(update)
     logger.debug(message)
 
@@ -159,7 +154,6 @@ message_handlers = {
 
 async def forwardedHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """所有转发消息"""
-
     message = update.message
     message_origin_info = getMessageOriginInfo(message.forward_origin)
 
