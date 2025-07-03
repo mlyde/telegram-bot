@@ -33,6 +33,7 @@ async def callbackHandle(update: Update, context: CallbackContext | ContextTypes
         logger.debug("更改按钮键盘")
         await context.bot.edit_message_text(chat_id=chat.id, message_id=message.message_id, text='You chose Option 2!', reply_markup=None)
 
+    # 入群验证的通过\禁止按钮
     if data[:3] in ["pas", "ban"]:
         if from_user.id in admins_id_list:
             action, user_id = data.split('_')

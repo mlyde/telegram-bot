@@ -47,13 +47,13 @@ async def textHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"{text} with quote: {quote.text}" if message.quote else text
     )
 
-    # 如果用户是第一次活跃, 二次检查用户页内容
-    if not userIsActivity(chat=message.chat, user=message.from_user):
-        await checkUserBlockContent(context, message.chat, message.from_user)
-
-    if message_type in groups_set:
-        if message.chat.id in active_group_id_list:
-            await checkMessageBlockContent(message, context)
+    if message_type in groups_set and message.chat.id in active_group_id_list:
+        # 如果用户是第一次活跃, 二次检查用户页内容
+        if not userIsActivity(chat=message.chat, user=message.from_user):
+            if is_ban := await checkUserBlockContent(context, message.chat, message.from_user):
+                await message.delete()
+                return
+        await checkMessageBlockContent(message, context)
     elif message_type is ChatType.PRIVATE and message.from_user.id in admin_id_list:
         # 将管理员发给 bot 的内容做屏蔽词检测, 全匹配
         has_block_words = (

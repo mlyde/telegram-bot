@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 import time
 
-from telegram import Update, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, CallbackContext, ConversationHandler
 from telegram.constants import ChatType, ParseMode
 
@@ -13,8 +13,7 @@ from utils.admin import banTime, muteTime
 from utils.get_info import getChatInfo, getStickerInfo, getUserInfo, getMessageContent
 from utils.other import getMD5
 from utils.time import last_start_up_time
-from utils.send import sendRandomStartReply, MyInlineKeyboard
-
+from utils.send import sendRandomStartReply
 admin_id_list: list = static_config.get("admin_id")
 help_content = static_config.get("help_content")
 
@@ -37,20 +36,20 @@ async def startArgsCommand(update: Update, context: CallbackContext):
     """携带参数的对话, deep link, 最长 64 字符
     https://t.me/sdustbot?start=parameter"""
     message, is_edit = getMessageContent(update)
-    args = context.args
-    if not args: return await startCommand(update, context)
-    logger.info(f"/start with \"{' '.join(args)}\" from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
 
-    # 验证入群成员, 负数 id 为群 id, 进行过滤
-    # if args and args[0][:9]=="captcha_-":
-    if args and args[0][:8]=="captcha_":
-        chat_id = int(args[0].split('_')[1])
-        chat = await context.bot.get_chat(chat_id)
-        logger.info(f"{getUserInfo(message.from_user)} 发起在群组 {getChatInfo(chat)} 的验证")
-        context.user_data["chat"] = chat
-        return await startCaptcha(message, context)
+    if args := context.args:
+        logger.info(f"/start with \"{' '.join(args)}\" from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
+        # 过滤入群验证, 负数 id 为群 id
+        if args[0][:9]=="captcha_-":
+            chat_id = int(args[0].split('_')[1])
+            chat = await context.bot.get_chat(chat_id)
+            logger.info(f"{getUserInfo(message.from_user)} 发起在群组 {getChatInfo(chat)} 的验证")
+            context.user_data["chat"] = chat
+            return await startCaptcha(message, context)
+        else:
+            logger.debug("/start: unknown args")
 
-    logger.debug("/start: unknown args")
+    await startCommand(update, context)
     return ConversationHandler.END
 
 async def uptimeCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -85,7 +84,6 @@ async def captchaCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(f"/captcha from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
 
     if message.from_user.id in admin_id_list:
-
         if message.reply_to_message.from_user:
             # 标记的用户的 id
             message.reply_to_message.from_user.id
@@ -108,7 +106,7 @@ async def captchaCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message.reply_text("验证")
 
 async def muteCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """禁言小时数, 群内回复指定消息, 将消息来源用户封禁"""
+    """群内回复指定消息, 将消息来源用户封禁"""
     message, is_edit = getMessageContent(update)
     await message.delete()
     logger.info(f"/mute from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")

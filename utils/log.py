@@ -61,7 +61,6 @@ def rootLogging(file_path, log_format: str, date_format: str, level=logging.DEBU
         ]
     )
 
-
 def fileLogging(files_path, formatter: Formatter, level = logging.DEBUG):
     """记录不同日志文件"""
 
@@ -94,6 +93,7 @@ def fileLogging(files_path, formatter: Formatter, level = logging.DEBUG):
         "handle.message_handle": logger_message,
         # "handle.other_handle": logger_bot,
         "handle.reaction_handle": logger_message,
+        "handle.conversation_handle": logger_bot,
     }
 
     for logger_name, config in module_loggers.items():

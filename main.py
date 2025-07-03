@@ -3,14 +3,13 @@ setup_logging()
 import logging
 logger = logging.getLogger(__name__)
 import time
-
 from telegram import Update
-from telegram.error import NetworkError
 from telegram.ext import (
     Application, AIORateLimiter, Defaults,
     CommandHandler, MessageHandler, CallbackQueryHandler, ChatMemberHandler, MessageReactionHandler,
     filters, ConversationHandler,
 )
+
 from handle import error_handle
 from handle.command_handle import (
     startArgsCommand,
@@ -20,8 +19,8 @@ from handle.command_handle import (
     muteCommand
 )
 from handle.conversation_handle import (
-    exitCaptcha, handle_answer,
-    CAPTCHA_QUESTION, ANSWER
+    handleCaptcha, handleQA, exitCaptcha,
+    CAPTCHA, QUESTION_ANSWER
 )
 from handle.message_handle import (
     forwardedHandleMessage,
@@ -68,9 +67,12 @@ def main(drop_pending_updates=False) -> None:
     # Commands
     conversation_handler = ConversationHandler(
         entry_points=[CommandHandler("start", startArgsCommand, filters.ChatType.PRIVATE)],
-        states={CAPTCHA_QUESTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_answer, filters.ChatType.PRIVATE)]},
+        states={
+            CAPTCHA: [MessageHandler(filters.TEXT & ~filters.COMMAND, handleCaptcha, filters.ChatType.PRIVATE)],
+            QUESTION_ANSWER: [MessageHandler(filters.TEXT & ~filters.COMMAND, handleQA, filters.ChatType.PRIVATE)],
+        },
         fallbacks=[MessageHandler(filters.ALL, exitCaptcha)],
-        conversation_timeout=180  # 超时秒数
+        conversation_timeout=300  # 超时秒数
     )
     app.add_handler(conversation_handler)
     # app.add_handler(CommandHandler("start", startCommand, filters.ChatType.PRIVATE))
@@ -92,9 +94,9 @@ def main(drop_pending_updates=False) -> None:
     app.add_handler(MessageHandler(filters.LOCATION, locationHandleMessage))
     app.add_handler(MessageHandler(filters.Sticker.ALL, stickerHandleMessage))
     app.add_handler(MessageHandler(filters.Document.ALL, documentHandleMessage))
-    app.add_handler(MessageHandler(filters.ALL, lastHandleMessage))     # 未被匹配的消息
     # app.add_handler(MessageHandler(filters.Regex("^Something else...$"), handleTextMessage))  # 捕获特定文本
     # app.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS & filters.ChatType.GROUPS, chatMemberHandle))  # 群内入群消息提示
+    app.add_handler(MessageHandler(filters.ALL, lastHandleMessage)) # 未被匹配的其他消息
     # Reaction
     app.add_handler(MessageReactionHandler(reactionHandle))
     # ChatMember
@@ -107,7 +109,7 @@ def main(drop_pending_updates=False) -> None:
     # Run
     logger.info("run polling...")
     app.run_polling(
-        poll_interval=6,            # 拉取消息的间隔, s
+        poll_interval=4,            # 拉取消息的间隔, s
         bootstrap_retries=-1,       # 启动阶段自动重试
         allowed_updates=Update.ALL_TYPES,
         drop_pending_updates=drop_pending_updates,

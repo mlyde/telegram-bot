@@ -11,44 +11,66 @@ from core.captcha_question import captcha_question_dict
 from utils.admin import captchaSuccess, captchaFail
 from utils.get_info import getMessageContent, getUserInfo
 from utils.job_manager import execute_job_now
+from utils.captcha import generateCaptcha
+question_answer_list = list(captcha_question_dict.values())
 
 # 定义会话状态
-CAPTCHA_QUESTION, ANSWER = range(2)
+CAPTCHA, QUESTION_ANSWER = range(2)
 
 async def startCaptcha(message: Message, context: ContextTypes.DEFAULT_TYPE):
     """开始问题对答"""
-    random_item: dict = random.choice(list(captcha_question_dict.values()))
+    img_byte_io, result = generateCaptcha()
+    img = img_byte_io.read()
+    img_byte_io.close()
     # 每个用户有独立的 context.user_data 保证持续交互, 默认存储在内存中
-    context.user_data["qa"] = random_item
-    await message.reply_text(random_item['q'])
-    return CAPTCHA_QUESTION
+    context.user_data["captcha"] = result
+    await message.reply_photo(photo=img, caption="请回答该式子的计算结果")
+    return CAPTCHA
 
-async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """处理问题答案"""
+async def handleCaptcha(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """传统验证码"""
     message, is_edit = getMessageContent(update)
     chat = context.user_data.get("chat")
     user = message.from_user
-    answer = context.user_data.get("qa").get('a')
+    captcha = context.user_data.get("captcha")
 
     logReceiveMediaMessage(message, "text", is_edit, message.text_markdown_v2)
 
-    # 检查是否在验证流程中
-    if chat and re.search(answer, message.text):
-        logger.debug(f"{getUserInfo(user)} captcha success")
-        await message.reply_text("回答正确，已解除禁言。")
-        await captchaSuccess(message, chat, user)
+    if message.text and captcha in message.text:
+        logger.info(f"{getUserInfo(user)} captcha success")
+        random_item: dict = random.choice(question_answer_list)
+        context.user_data["answer"] = random_item.get("a")
+        await message.reply_text(random_item.get("q"))
+        return QUESTION_ANSWER
     else:
-        logger.debug(f"{getUserInfo(user)} captcha fail")
+        logger.info(f"{getUserInfo(user)} captcha fail")
         await message.reply_text("回答错误, 请 6 分钟后再试。")
-        await captchaFail(message, chat, user)
+        await captchaFail(context, chat, user)
+        await execute_job_now(context, chat, user)
+        return ConversationHandler.END
 
-    await execute_job_now(context, chat, user)
-    # 清理用户数据
-    # context.user_data.pop("captcha_id", None)
-    context.user_data.clear()
+async def handleQA(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """回答问题"""
+    message, is_edit = getMessageContent(update)
+    chat = context.user_data.get("chat")
+    user = message.from_user
+    answer = context.user_data.get("answer")
 
-    return ConversationHandler.END
+    logReceiveMediaMessage(message, "text", is_edit, message.text_markdown_v2)
+
+    if chat and re.search(answer, message.text):
+        logger.info(f"{getUserInfo(user)} QA success")
+        await message.reply_text("回答正确，已解除禁言。")
+        await captchaSuccess(context, chat, user)
+    else:
+        logger.info(f"{getUserInfo(user)} QA fail")
+        await message.reply_text("回答错误, 请 6 分钟后再试。")
+        await captchaFail(context, chat, user)
+        await execute_job_now(context, chat, user)
+        return ConversationHandler.END
 
 async def exitCaptcha(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """退出对话"""
+    # 清理用户数据
+    context.user_data.clear()
     return ConversationHandler.END

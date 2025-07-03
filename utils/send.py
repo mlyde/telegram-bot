@@ -75,27 +75,30 @@ async def sendStreamText(update: Update, context: ContextTypes.DEFAULT_TYPE, tex
     await asyncio.sleep(6)
     await message.delete()
 
-async def sendPhoto(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def sendPhoto(update: Update, context: ContextTypes.DEFAULT_TYPE, img=None):
     """ 一些发送图片的方法 """
     message, is_edit = getMessageContent(update)
 
     # 向聊天对方显示"正在上传照片"状态, 自动显示 5 秒
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.UPLOAD_PHOTO)
 
-    # 发送一张本地图片
-    # with open("/home/mlyder/Downloads/out.jpg", 'rb') as f:
-    #     await message.reply_photo(photo=f)
-    # await message.reply_photo(photo=open("/home/mlyder/Downloads/out.jpg", 'rb'))
+    if img is None:
+        # 发送一张本地图片
+        # with open("/home/mlyder/Downloads/out.jpg", 'rb') as f:
+        #     await message.reply_photo(photo=f)
+        # await message.reply_photo(photo=open("/home/mlyder/Downloads/out.jpg", 'rb'))
 
-    # 发送一张网络图片
-    await message.reply_photo(photo="https://www.baidu.com/favicon.ico")
+        # 发送一张网络图片
+        await message.reply_photo(photo="https://www.baidu.com/favicon.ico")
 
-    # media = [
-    #     InputMediaPhoto(open("/home/mlyder/Downloads/out.jpg", 'rb')),
-    #     InputMediaPhoto("https://www.baidu.com/favicon.ico")
-    # ]
-    # 发送多张图片
-    # await message.reply_media_group(media=media)
+        # media = [
+        #     InputMediaPhoto(open("/home/mlyder/Downloads/out.jpg", 'rb')),
+        #     InputMediaPhoto("https://www.baidu.com/favicon.ico")
+        # ]
+        # 发送多张图片
+        # await message.reply_media_group(media=media)
+    else:
+        await message.reply_photo(photo=img)
 
 async def sendAudio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """发送音频"""
@@ -152,7 +155,7 @@ async def sendCaptchaMessage(context: ContextTypes.DEFAULT_TYPE, chat: Chat, use
     """入群验证消息"""
     sent_message = await context.bot.send_message(
         chat_id = chat.id,
-        text = f"{user.full_name}，请在 *5* 分钟内点击下面的按钮完成验证，否则你将被移出群组一段时间。",
+        text = f"{user.full_name}，请在 *5* 分钟内点击下面的按钮，回答两个问题后完成验证，否则你将被移出群组一段时间。",
         reply_markup=MyInlineKeyboard.getCaptchaMarkup(context=context, chat_id=chat.id, user_id=user.id),
         parse_mode=ParseMode.MARKDOWN_V2
     )
