@@ -106,8 +106,13 @@ def main(drop_pending_updates=False) -> None:
 
     # Run
     logger.info("run polling...")
-    app.run_polling(allowed_updates=Update.ALL_TYPES, poll_interval=6, drop_pending_updates=drop_pending_updates)
-
+    app.run_polling(
+        poll_interval=6,            # 拉取消息的间隔, s
+        bootstrap_retries=-1,       # 启动阶段自动重试
+        allowed_updates=Update.ALL_TYPES,
+        drop_pending_updates=drop_pending_updates,
+        close_loop=True
+    )
 
 if __name__ == "__main__":
 
@@ -115,7 +120,8 @@ if __name__ == "__main__":
         try:
             last_start_up_time.update()
             main()
-        except (KeyboardInterrupt, ValueError, RuntimeError, NetworkError):
+        except (KeyboardInterrupt):
+            logger.info("exit.")
             break
         except Exception as e:
             logger.critical(f"{e}")

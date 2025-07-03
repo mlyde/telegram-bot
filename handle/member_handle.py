@@ -13,7 +13,7 @@ from utils.get_info import getChatInfo, getStickerInfo, getUserInfo
 from utils.check_contents import checkUserBlockContent
 from utils.send import sendCaptchaMessage
 active_group_id_list: list = static_config.get("active_group_id")
-debug_group_id: int = static_config.get("debug_group_id")
+debug_group_id: list = static_config.get("debug_group_id")
 
 # ChatMember
 async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -62,7 +62,7 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
                     # 验证消息
                     # if not is_baned and chat.id in active_group_id_set:
-                    if not is_baned and chat.id == debug_group_id:
+                    if not is_baned and chat.id in debug_group_id:
                         await muteTime(context, chat, user)
 
                         # 超时后 ban

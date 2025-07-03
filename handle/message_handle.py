@@ -6,7 +6,6 @@ from telegram.ext import ContextTypes
 from telegram.constants import ChatType
 
 from core.static_config import static_config
-from core.block_words import pattern_group_message, pattern_button
 from core.database import db_user_verification
 from utils.get_info import (
     getChatInfo, getUserInfo, getMessageOriginInfo,
@@ -40,9 +39,13 @@ def logReceiveMediaMessage(message: Message, type: str, is_edit: bool, info: str
 async def textHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """文本消息"""
     message, is_edit = getMessageContent(update)
+    quote = message.quote
     text = message.text_markdown_v2
     message_type = message.chat.type
-    logReceiveMediaMessage(message, "text", is_edit, text)
+    logReceiveMediaMessage(
+        message, "text", is_edit,
+        f"{text} with quote: {quote.text}" if message.quote else text
+    )
 
     # 如果用户是第一次活跃, 二次检查用户页内容
     if not userIsActivity(chat=message.chat, user=message.from_user):
@@ -51,10 +54,13 @@ async def textHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if message_type in groups_set:
         if message.chat.id in active_group_id_list:
             await checkMessageBlockContent(message, context)
-
-    elif message.from_user.id in admin_id_list:
+    elif message_type is ChatType.PRIVATE and message.from_user.id in admin_id_list:
         # 将管理员发给 bot 的内容做屏蔽词检测, 全匹配
-        text_reply = "匹配成功" if test_contain_all_block_words(text) else "不含屏蔽词"
+        has_block_words = (
+            test_contain_all_block_words(message.text)
+            or (test_contain_all_block_words(message.quote.text) if message.quote else False)
+        )
+        text_reply = ("匹配成功" if has_block_words else "不含屏蔽词")
         await message.reply_text(text_reply)
 
 async def photoHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):

@@ -50,7 +50,7 @@ def containBlockedEmojiHtml(message_html: str, blocked_emoji_dict: dict[str, lis
         return any(any(emoji_id in li  for li in blocked_emoji_dict.values())  for emoji_id in emoji_ids)
     return False
 
-def test_contain_all_block_words(content):
+def test_contain_all_block_words(content: str):
 
     txt = str(content)
     if any(containBlockedWords(txt, pattern) for pattern in pattern_list):
@@ -90,7 +90,10 @@ async def checkUserBlockContent(context: ContextTypes.DEFAULT_TYPE, chat: Chat, 
 async def checkMessageBlockContent(message: Message, context: ContextTypes.DEFAULT_TYPE):
     """检查用户发出的消息的屏蔽词, 删除并并封禁用户"""
     # 违禁词或违禁会员表情
-    if containBlockedWords(message.text, pattern_group_message) or containBlockedEmojiHtml(message.text_html, block_emoji.dict):
+    if (containBlockedWords(message.text, pattern_group_message)
+        or (containBlockedWords(message.quote.text, pattern_group_message) if message.quote else False)
+        or containBlockedEmojiHtml(message.text_html, block_emoji.dict)
+    ):
         logger.debug(f"删除消息 {message.id}")
         await message.delete()
         # await changePermission(update, context, False)
