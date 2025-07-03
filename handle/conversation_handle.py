@@ -19,9 +19,7 @@ CAPTCHA, QUESTION_ANSWER = range(2)
 
 async def startCaptcha(message: Message, context: ContextTypes.DEFAULT_TYPE):
     """开始问题对答"""
-    img_byte_io, result = generateCaptcha()
-    img = img_byte_io.read()
-    img_byte_io.close()
+    img, result = generateCaptcha()
     # 每个用户有独立的 context.user_data 保证持续交互, 默认存储在内存中
     context.user_data["captcha"] = result
     await message.reply_photo(photo=img, caption="请回答该式子的计算结果")

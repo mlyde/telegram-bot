@@ -1,10 +1,11 @@
 """配置基本日志参数"""
+import os
 from pathlib import Path
 import logging
 from logging import Formatter
 from logging.handlers import RotatingFileHandler
-from core.static_config import static_config
 
+from core.static_config import static_config
 OTHER_LEVEL = logging.WARNING
 bot_level = static_config.get("level")
 BOT_LEVEL = logging._nameToLevel.get(bot_level)
@@ -64,37 +65,33 @@ def rootLogging(file_path, log_format: str, date_format: str, level=logging.DEBU
 def fileLogging(files_path, formatter: Formatter, level = logging.DEBUG):
     """记录不同日志文件"""
 
-    logger_bot     = getLoggerConfig(filename=files_path / "bot.log", level=level)
+    logger_default = getLoggerConfig(filename=files_path / "bot.log", level=level)
     logger_message = getLoggerConfig(filename=files_path / "message.log", level=level)
     logger_member  = getLoggerConfig(filename=files_path / "member.log", level=level)
     logger_error   = getLoggerConfig(filename=files_path / "error.log", level=level)
 
     # 不同模块独立日志
     module_loggers = {
-        # "main": logger_bot,
-        # "utils.admin": logger_bot,
-        # "utils.check_contents": logger_bot,
-        # "utils.get_info": logger_bot,
-        # "utils.lifecycle": logger_bot,
-        # "utils.log": logger_bot,
-        # "utils.other": logger_bot,
-        # "utils.retry": logger_bot,
-        # "utils.self": logger_bot,
-        # "utils.send": logger_bot,
-        # "utils.time": logger_bot,
-        # "core.block_emoji": logger_bot,
-        # "core.block_words": logger_bot,
-        # "core.static_config": logger_bot,
-        # "core.database": logger_bot,
-        # "handle.callback_handle": logger_bot,
-        # "handle.command_handle": logger_bot,
         "handle.error_handle": logger_error,
         "handle.member_handle": logger_member,
         "handle.message_handle": logger_message,
-        # "handle.other_handle": logger_bot,
         "handle.reaction_handle": logger_message,
-        "handle.conversation_handle": logger_bot,
     }
+
+    # 为其他文件使用默认 logger
+    for root, dirs, files in os.walk('.'):
+        # 从待遍历目录列表中移除 .venv
+        dirs[:] = [d for d in dirs if not d.startswith(".venv")]
+        for file in files:
+            if file.endswith('.py') and not file.startswith('__'):  # 跳过__init__.py
+                module_path = Path(root) / file
+                module_name = str(module_path.with_suffix('')).replace(os.sep, '.')
+
+                if module_name in module_loggers:
+                    print("use customs logger:", module_name)
+                else:
+                    print("use default logger:", module_name)
+                    module_loggers.setdefault(module_name, logger_default)
 
     for logger_name, config in module_loggers.items():
         logger = logging.getLogger(logger_name)
@@ -128,7 +125,7 @@ if __name__ == "__main__":
     # 初始化, 只需在主程序写
     setup_logging()
 
-    # 获取logger, 自动继承全局配置
+    # 获取logger, 自动继承全局配置, 都要写
     logger = logging.getLogger(__name__)
     # logger = logging.getLogger("log")
 

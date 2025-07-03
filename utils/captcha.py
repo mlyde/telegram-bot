@@ -17,10 +17,9 @@ def randomFormula(num_1_max = 50, num_2_max = 9):
     operator = random.choice(operators)
 
     # 结果
-    if operator == '加':
-        result = a + b
-    elif operator == '减':
-        result = a - b
+    match operator:
+        case '加': result = a + b
+        case '减': result = a - b
 
     return f"{a}{operator}{b}=", str(result)
 
@@ -78,5 +77,7 @@ def generateCaptcha():
     with BytesIO() as byte_io:
         img.save(byte_io, format="PNG")
         byte_io.seek(0)
+        image_bytes = byte_io.getvalue()# 不移动指针
+        # image_bytes = byte_io.read()
 
-        return byte_io, result
+    return image_bytes, result

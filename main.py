@@ -122,7 +122,7 @@ if __name__ == "__main__":
         try:
             last_start_up_time.update()
             main()
-        except (KeyboardInterrupt):
+        except (KeyboardInterrupt, RuntimeError):
             logger.info("exit.")
             break
         except Exception as e:
