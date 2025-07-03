@@ -16,6 +16,6 @@ test.py
 .vscode/
 
 # Application config and logs
-/config/
+config/
 log/
 files/
