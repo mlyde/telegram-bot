@@ -7,7 +7,7 @@ from core.static_config import static_config
 from utils.admin import captchaSuccess, captchaFail
 from utils.send import MyInlineKeyboard
 from utils.get_info import getUserInfo, getChatInfo
-from utils.job_manager import remove_job_by_chat_and_user_if_exists, remove_job_by_name_if_exists
+from utils.admin import removeBanJobs
 admins_id_list = static_config.get("admin_id")
 
 # Callback
@@ -38,8 +38,7 @@ async def callbackHandle(update: Update, context: CallbackContext | ContextTypes
         if from_user.id in admins_id_list:
             action, user_id = data.split('_')
             to_user = await context.bot.get_chat(user_id)
-            await context.bot.delete_message(chat.id, message.id)
-            remove_job_by_chat_and_user_if_exists(context, chat, to_user)
+            # await context.bot.delete_message(chat.id, message.id)   # 立刻删除消息
 
             if action == "pass":
                 logger.info(f"admin {getUserInfo(from_user)} pass {getUserInfo(to_user)} in {getChatInfo(chat)}")

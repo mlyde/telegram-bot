@@ -72,7 +72,7 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                             chat_id=chat.id,
                             user_id=user.id,
                             name=f"ban {getUserInfo(user)} from {getChatInfo(chat)}",
-                            data={"chat": chat, "user": user}
+                            data={"chat": chat, "user": user, "ban": True}
                         )
 
                         await sendCaptchaMessage(context=context, chat=chat, user=user)

@@ -10,6 +10,7 @@ from telegram.error import BadRequest
 from core.static_config import static_config
 from core.database import db_user_verification
 from utils.get_info import getUserInfo, getChatInfo
+from utils.job_manager import removeVerifyJobs, removeBanJobs
 forward_to_user_id: int = static_config.get("forward_to")
 
 _example = ChatPermissions(
@@ -31,7 +32,8 @@ _example = ChatPermissions(
 all_permissions = ChatPermissions.all_permissions()
 no_permissions = ChatPermissions.no_permissions()
 mute_permission = ChatPermissions(can_send_messages = False)    # 其他发送权限自动失效
-unmute_permission = ChatPermissions(can_send_messages = True)
+# unmute_permission = ChatPermissions(can_send_messages = True)
+unmute_permission = all_permissions
 
 async def banTime(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: User, hours=24):
     """封禁一段时间"""
@@ -66,13 +68,24 @@ async def banMemberDelay(context: ContextTypes.DEFAULT_TYPE):
 
 async def captchaSuccess(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: User):
     """验证成功"""
+    await removeVerifyJobs(context=context, chat=chat, user=user)
+    await removeBanJobs(context=context, chat=chat, user=user)
     await unmute(context, chat, user)
     db_user_verification.setVerified(chat, user)
 
 async def captchaFail(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: User):
     """验证失败"""
-    await banTime(context, chat, user, hours=0.1)
+    await removeVerifyJobs(context=context, chat=chat, user=user)
+    await removeBanJobs(context=context, chat=chat, user=user, execute=True)
     db_user_verification.remove(chat, user)
+
+async def deleteMessageCallback(context: ContextTypes.DEFAULT_TYPE):
+    """定时删除消息的回调函数"""
+    job = context.job
+    message_id = job.data.get("message_id")
+    if job:
+        await context.bot.delete_message(job.chat_id, message_id)
+        logger.debug(f"{job.name} deleted")
 
 # async def removeDeleteAccount(context: ContextTypes.DEFAULT_TYPE, chat_id: str | int):
 #     """ 移除群组的 delete account 账户    未实现!!! """

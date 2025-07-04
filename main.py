@@ -109,7 +109,7 @@ def main(drop_pending_updates=False) -> None:
     # Run
     logger.info("run polling...")
     app.run_polling(
-        poll_interval=4,            # 拉取消息的间隔, s
+        poll_interval=3,            # 拉取消息的间隔, 默认 3 s
         bootstrap_retries=-1,       # 启动阶段自动重试
         allowed_updates=Update.ALL_TYPES,
         drop_pending_updates=drop_pending_updates,

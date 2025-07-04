@@ -6,11 +6,11 @@ import random
 
 from telegram import Update, Message
 from telegram.ext import ContextTypes, ConversationHandler
+from telegram.constants import ParseMode
 from handle.message_handle import logReceiveMediaMessage
 from core.captcha_question import captcha_question_dict
 from utils.admin import captchaSuccess, captchaFail
 from utils.get_info import getMessageContent, getUserInfo
-from utils.job_manager import execute_job_now
 from utils.captcha import generateCaptcha
 question_answer_list = list(captcha_question_dict.values())
 
@@ -38,13 +38,12 @@ async def handleCaptcha(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.info(f"{getUserInfo(user)} captcha success")
         random_item: dict = random.choice(question_answer_list)
         context.user_data["answer"] = random_item.get("a")
-        await message.reply_text(random_item.get("q"))
+        await message.reply_text(random_item.get("q"), parse_mode=ParseMode.MARKDOWN_V2)
         return QUESTION_ANSWER
     else:
         logger.info(f"{getUserInfo(user)} captcha fail")
         await message.reply_text("回答错误, 请 6 分钟后再试。")
         await captchaFail(context, chat, user)
-        await execute_job_now(context, chat, user)
         return ConversationHandler.END
 
 async def handleQA(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -64,7 +63,6 @@ async def handleQA(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.info(f"{getUserInfo(user)} QA fail")
         await message.reply_text("回答错误, 请 6 分钟后再试。")
         await captchaFail(context, chat, user)
-        await execute_job_now(context, chat, user)
         return ConversationHandler.END
 
 async def exitCaptcha(update: Update, context: ContextTypes.DEFAULT_TYPE):

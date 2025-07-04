@@ -12,7 +12,7 @@ from telegram.ext import ContextTypes
 from telegram.constants import ChatAction, ParseMode
 
 from core.static_config import static_config
-from utils.job_manager import deleteMessageJob
+from utils.admin import deleteMessageCallback
 from utils.other import choiceOne
 from utils.get_info import getMessageContent, getChatInfo, getUserInfo
 directory = static_config.get("directory")
@@ -162,7 +162,7 @@ async def sendCaptchaMessage(context: ContextTypes.DEFAULT_TYPE, chat: Chat, use
 
     # 定时删除任务
     context.job_queue.run_once(
-        callback=deleteMessageJob,
+        callback=deleteMessageCallback,
         when=300,  # second
         chat_id=chat.id,
         user_id=user.id,
