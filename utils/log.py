@@ -76,6 +76,7 @@ def fileLogging(files_path, formatter: Formatter, level = logging.DEBUG):
         "handle.member_handle": logger_member,
         "handle.message_handle": logger_message,
         "handle.reaction_handle": logger_message,
+        "utils.send": logger_message,
     }
 
     # 为其他文件使用默认 logger

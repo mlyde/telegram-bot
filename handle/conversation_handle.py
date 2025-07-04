@@ -7,7 +7,7 @@ import random
 from telegram import Update, Message
 from telegram.ext import ContextTypes, ConversationHandler
 from telegram.constants import ParseMode
-from handle.message_handle import logReceiveMediaMessage
+from handle.message_handle import logReceiveMessageContent
 from core.captcha_question import captcha_question_dict
 from utils.admin import captchaSuccess, captchaFail
 from utils.get_info import getMessageContent, getUserInfo
@@ -32,7 +32,7 @@ async def handleCaptcha(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = message.from_user
     captcha = context.user_data.get("captcha")
 
-    logReceiveMediaMessage(message, "text", is_edit, message.text_markdown_v2)
+    logReceiveMessageContent(message, "text", is_edit, message.text_markdown_v2)
 
     if message.text and captcha in message.text:
         logger.info(f"{getUserInfo(user)} captcha success")
@@ -53,7 +53,7 @@ async def handleQA(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = message.from_user
     answer = context.user_data.get("answer")
 
-    logReceiveMediaMessage(message, "text", is_edit, message.text_markdown_v2)
+    logReceiveMessageContent(message, "text", is_edit, message.text_markdown_v2)
 
     if chat and re.search(answer, message.text):
         logger.info(f"{getUserInfo(user)} QA success")
