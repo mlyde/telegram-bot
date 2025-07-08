@@ -8,11 +8,10 @@ from telegram import Update, Message
 from telegram.ext import ContextTypes, ConversationHandler
 from telegram.constants import ParseMode
 from handle.message_handle import logReceiveMessageContent
-from core.captcha_question import captcha_question_dict
+from core.captcha_question import question_answer_list
 from utils.admin import captchaSuccess, captchaFail
 from utils.get_info import getMessageContent, getUserInfo
 from utils.captcha import generateCaptcha
-question_answer_list = list(captcha_question_dict.values())
 
 # 定义会话状态
 CAPTCHA, QUESTION_ANSWER = range(2)
@@ -36,9 +35,9 @@ async def handleCaptcha(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if message.text and captcha in message.text:
         logger.info(f"{getUserInfo(user)} captcha success")
-        random_item: dict = random.choice(question_answer_list)
-        context.user_data["answer"] = random_item.get("a")
-        await message.reply_text(random_item.get("q"), parse_mode=ParseMode.MARKDOWN_V2)
+        random_item = random.choice(question_answer_list)
+        context.user_data["answer"] = random_item.get('a')
+        await message.reply_text(random_item.get('q'), parse_mode=ParseMode.MARKDOWN_V2)
         return QUESTION_ANSWER
     else:
         logger.info(f"{getUserInfo(user)} captcha fail")

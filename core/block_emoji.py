@@ -7,8 +7,8 @@ from pathlib import Path
 from telegram import StickerSet
 from telegram.ext import ContextTypes
 
-BLOCK_EMOJI_FILENAME = "config/block_emoji.json"
-blocked_emoji_path = Path(__file__).parent.parent / BLOCK_EMOJI_FILENAME
+_BLOCK_EMOJI_FILENAME = "config/block_emoji.json"
+_blocked_emoji_path = Path(__file__).parent.parent / _BLOCK_EMOJI_FILENAME
 
 class BlockEmojiLoader:
     """表情包屏蔽词 json 读写"""
@@ -50,7 +50,7 @@ class BlockEmojiLoader:
         return self._dict
 
 
-block_emoji = BlockEmojiLoader(blocked_emoji_path)
+block_emoji = BlockEmojiLoader(_blocked_emoji_path)
 
 
 async def flashEmojisId(context: ContextTypes.DEFAULT_TYPE):

@@ -8,8 +8,13 @@ from io import BytesIO
 
 from core.static_config import static_config
 font_path: str = static_config.get("font")
+font_list: list = [
+    ImageFont.truetype(font_path, 35),
+    ImageFont.truetype(font_path, 40),
+    ImageFont.truetype(font_path, 45)
+]
 
-def randomFormula(num_1_max = 50, num_2_max = 9):
+def randomFormula(num_1_max = 69, num_2_max = 9):
     """随机产生数学公式"""
     a = random.randint(1, num_1_max)
     b = random.randint(1, num_2_max)
@@ -50,7 +55,6 @@ def generateCaptcha():
 
     # 文字
     text, result = randomFormula()
-    font = ImageFont.truetype(font_path, 40)
     left = 0
     for ch in text:
         # 偏移和旋转
@@ -60,6 +64,7 @@ def generateCaptcha():
         angle = random.randint(-20, 20)
         char_img = Image.new('RGBA', (50, 50), (255, 255, 255, 0))
         char_draw = ImageDraw.Draw(char_img)
+        font = random.choice(font_list)
         char_draw.text((10, 10), ch, fill=randomColor(max_value=0.75), font=font)
         char_img = char_img.rotate(angle, expand=1)
         img.paste(char_img, (x, y), char_img)
