@@ -5,14 +5,14 @@ import asyncio
 import datetime
 
 from telegram import (
-    Update, Message, Chat, User,
+    Update, Message, Chat, User, ChatMember,
     InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton, ReplyKeyboardMarkup, ForceReply
 )
 from telegram.ext import ContextTypes
-from telegram.constants import ChatAction, ParseMode
+from telegram.constants import ChatAction, ParseMode, ChatMemberStatus
 
 from core.static_config import static_config
-from utils.admin import deleteMessageCallback
+from utils.admin import deleteMessageCallback, muteTime, banMemberDelay
 from utils.other import choiceOne
 from utils.get_info import (
     getMessageContent, getChatInfo, getUserInfo,
@@ -200,6 +200,26 @@ async def sendCaptchaMessage(context: ContextTypes.DEFAULT_TYPE, chat: Chat, use
 
     logSendMessageContent(message_sent, "text", False, message_sent.text_markdown_v2)
     return message_sent
+
+async def sendMemberVerification(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: User):
+    """向群内用户发送验证消息, 要求完成验证"""
+    # 判断用户仍在群内, 避免 bot 延迟上线后对不存在的用户发送验证
+    chat_member: ChatMember = await context.bot.get_chat_member(chat_id=chat.id, user_id=user.id)
+    if chat_member.status == ChatMemberStatus.MEMBER:
+
+        # 禁言
+        await muteTime(context, chat, user)
+        # 定时任务, 超时后 ban
+        context.job_queue.run_once(
+            callback=banMemberDelay,
+            when=360,  # second
+            chat_id=chat.id,
+            user_id=user.id,
+            name=f"ban {getUserInfo(user)} from {getChatInfo(chat)}",
+            data={"chat": chat, "user": user, "ban": True}
+        )
+        # 发送验证消息
+        await sendCaptchaMessage(context=context, chat=chat, user=user)
 
 async def sendButtonMessage(message: Message, context: ContextTypes.DEFAULT_TYPE):
     """向用户发出二次验证"""

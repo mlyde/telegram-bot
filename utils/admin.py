@@ -87,21 +87,19 @@ async def deleteMessageCallback(context: ContextTypes.DEFAULT_TYPE):
         await context.bot.delete_message(job.chat_id, message_id)
         logger.debug(f"{job.name} deleted")
 
-# async def removeDeleteAccount(context: ContextTypes.DEFAULT_TYPE, chat_id: str | int):
+# async def removeDeleteAccount(context: ContextTypes.DEFAULT_TYPE, chat: Chat):
 #     """ 移除群组的 delete account 账户    未实现!!! """
-
-#     administrators = await context.bot.get_chat_administrators(chat_id)
-#     member_count = await context.bot.get_chat_member_count(chat_id)
-#     members: list[User] = []
+#     # 不存在的方法
+#     members: list[User] = await context.bot.get_chat_members(chat_id)
 #     try:
 #         n = 0
 #         for user in members:
 #             if user.status == "Delete Account":
-#                 await context.bot.ban_chat_member(chat_id, user.id, until_date=0)  # 移除用户, 不封禁
+#                 await context.bot.ban_chat_member(chat.id, user.id, until_date=0)  # 移除用户, 不封禁
 #                 logger.debug(f"已移除 Delete Account ({user.id})")
 #                 n += 1
 #     finally:
-#         logger.info(f"已移除 {n} 个已注销账户")
+#         logger.info(f"已移除 {getChatInfo(chat)} 的 {n} 个已注销账户")
 
 async def messageExist(context: ContextTypes.DEFAULT_TYPE, from_chat_id, message_id, chat_id=forward_to_user_id):
     """检测一条消息是否存在"""
@@ -119,6 +117,7 @@ async def messageExist(context: ContextTypes.DEFAULT_TYPE, from_chat_id, message
             logger.info(f"转发失败: {e}")
         return False
 
+    # 不存在的方法
     # if message := await context.bot.get_message(chat_id=chat_id,message_id=int(message_id)):
     #     return message
     # else:

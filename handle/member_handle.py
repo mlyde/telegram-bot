@@ -3,15 +3,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 from telegram.constants import ChatMemberStatus
-from telegram import Update
+from telegram import Update, User
 from telegram.ext import ContextTypes
 
 from core.database import db_user_verification
 from core.static_config import static_config
-from utils.admin import muteTime, banMemberDelay
 from utils.get_info import getChatInfo, getStickerInfo, getUserInfo
 from utils.check_contents import checkUserBlockContent
-from utils.send import sendCaptchaMessage
+from utils.send import sendMemberVerification
 active_group_id_list: list = static_config.get("active_group_id")
 debug_group_id: list = static_config.get("debug_group_id")
 
@@ -27,7 +26,7 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     chat = update.effective_chat
     chat_member = update.chat_member
-    user = chat_member.new_chat_member.user
+    user: User = chat_member.new_chat_member.user
 
     # old_member_status, new_member_status = chat_member.difference().get("status", (None, None)) # _chat_member.status 不一样时取出
     old_member_status, new_member_status = chat_member.old_chat_member.status, chat_member.new_chat_member.status
@@ -60,22 +59,9 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     log_status_different("is a member")
                     is_baned = await checkUserBlockContent(context, chat, user)
 
-                    # 验证消息
-                    # if not is_baned and chat.id in active_group_id_set:
-                    if not is_baned and chat.id in debug_group_id:
-                        await muteTime(context, chat, user)
-
-                        # 超时后 ban
-                        context.job_queue.run_once(
-                            callback=banMemberDelay,
-                            when=360,  # second
-                            chat_id=chat.id,
-                            user_id=user.id,
-                            name=f"ban {getUserInfo(user)} from {getChatInfo(chat)}",
-                            data={"chat": chat, "user": user, "ban": True}
-                        )
-
-                        await sendCaptchaMessage(context=context, chat=chat, user=user)
+                    if not is_baned and (chat.id in active_group_id_list):
+                        # 发起入群验证
+                        await sendMemberVerification(context, chat, user)
 
                     db_user_verification.addUser(chat, user)
         case _:
