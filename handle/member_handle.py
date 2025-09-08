@@ -58,7 +58,6 @@ async def chatMemberHandle(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 case _: # 为新成员
                     log_status_different("is a member")
                     is_baned = await checkUserBlockContent(context, chat, user)
-
                     if not is_baned and (chat.id in active_group_id_list):
                         # 发起入群验证
                         await sendMemberVerification(context, chat, user)

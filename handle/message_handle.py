@@ -17,7 +17,7 @@ from utils.check_contents import test_contain_all_block_words, checkMessageBlock
 from utils.send import logSendMessageContent
 
 directory: str = static_config.get("directory")
-admin_id_list: list = static_config.get("admin_id")
+owener_user_id: list = static_config.get("owener_user_id")
 active_group_id_list: list = static_config.get("active_group_id")
 groups_set = {ChatType.GROUP, ChatType.SUPERGROUP}
 
@@ -57,7 +57,7 @@ async def textHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await message.delete()
                 return
         await checkMessageBlockContent(message, context)
-    elif message_type is ChatType.PRIVATE and message.from_user.id in admin_id_list:
+    elif message_type is ChatType.PRIVATE and message.from_user.id in owener_user_id:
         # 将管理员发给 bot 的内容做屏蔽词检测, 全匹配
         has_block_words = (
             test_contain_all_block_words(message.text)
@@ -73,7 +73,7 @@ async def photoHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE)
     photo_info = getPhotoSizeInfo(message.photo)
     logReceiveMessageContent(message, "photo", is_edit, photo_info)
 
-    # if message.from_user.id in admin_id_set:
+    # if message.from_user.id in owener_user_id:
     #     photo_id = message.photo[-1].file_id    # -1 为最大尺寸图片
     #     # 保存图片
     #     file = await context.bot.get_file(photo_id)
@@ -86,7 +86,7 @@ async def videoHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE)
     video_info = getVideoInfo(message.video)
     logReceiveMessageContent(message, "video", is_edit, video_info)
 
-    # if message.from_user.id in admin_id_set:
+    # if message.from_user.id in owener_user_id:
     #     video_id = message.video.file_id    # -1 为最大尺寸
     #     # 保存视频
     #     file = await context.bot.get_file(video_id)

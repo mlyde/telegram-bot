@@ -8,7 +8,7 @@ from utils.admin import captchaSuccess, captchaFail
 from utils.send import MyInlineKeyboard
 from utils.get_info import getUserInfo, getChatInfo
 from utils.admin import removeBanJobs
-admins_id_list = static_config.get("admin_id")
+admins_id_dict = static_config.get("admins_dict")
 
 # Callback
 async def callbackHandle(update: Update, context: CallbackContext | ContextTypes.DEFAULT_TYPE):
@@ -35,7 +35,7 @@ async def callbackHandle(update: Update, context: CallbackContext | ContextTypes
 
     # 入群验证的通过\禁止按钮
     if data[:3] in ["pas", "ban"]:
-        if from_user.id in admins_id_list:
+        if from_user.id in admins_id_dict[str(chat.id)]:
             action, user_id = data.split('_')
             to_user = await context.bot.get_chat(user_id)
             # await context.bot.delete_message(chat.id, message.id)   # 立刻删除消息

@@ -41,6 +41,7 @@ from handle.reaction_handle import reactionHandle
 from handle.member_handle import chatMemberHandle
 from handle.callback_handle import callbackHandle
 from core.static_config import static_config
+from core.dynamic_config import getAdminslist
 from utils.time import last_start_up_time, DEFAULT_TIMEZONE
 TOKEN = static_config.get("token")
 PROXY = static_config.get("proxy")
@@ -105,6 +106,8 @@ def main(drop_pending_updates=False) -> None:
     app.add_handler(CallbackQueryHandler(callbackHandle))
     # Error
     app.add_error_handler(error_handle.errorHandle)
+    # 运行后先执行的函数
+    app.post_init = getAdminslist
 
     # Run
     logger.info("run polling...")
@@ -125,6 +128,6 @@ if __name__ == "__main__":
         except (KeyboardInterrupt, RuntimeError):
             logger.info("exit.")
             break
-        except Exception as e:
-            logger.critical(f"{e}")
-            time.sleep(10)
+        # except Exception as e:
+        #     logger.critical(f"{e}")
+        #     time.sleep(10)

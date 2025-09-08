@@ -13,7 +13,7 @@ from utils.lifecycle import stopApp
 from utils.admin import banTime, getAdminList, messageExist
 from utils.send import sendReplyMarkup, sendCaptchaMessage
 
-admins_id_list: list = static_config.get("admin_id")
+owener_user_id: list = static_config.get("owener_user_id")
 active_group_id_list: list = static_config.get("active_group_id")
 
 async def otherCommand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -26,7 +26,7 @@ async def otherCommand(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     # 分离命令和参数
     command: str; arg: str
     command, arg = re.findall(r"^/([\w-]+)\s*(.*)$", text)[0]
-    if message.from_user.id in admins_id_list:
+    if message.from_user.id in owener_user_id:
         match command:
             case "flashemoji":
                 await flashEmojisId(context)

@@ -3,11 +3,13 @@ logger = logging.getLogger(__name__)
 import yaml
 from pathlib import Path
 from typing import Any, TypeAlias, TypedDict, Literal
+from telegram import ChatMember, Chat
 
 _STATIC_CONFIG_FILENAME = "config/static_config.yaml"
 
-UserId: TypeAlias = int # 用户 id 为正整数
-ChatId: TypeAlias = int # 群组 id 为负整数
+UserId: TypeAlias = int   # 用户 id 为正整数
+ChatId: TypeAlias = int   # 群组 id 为负整数
+ChatIdStr: TypeAlias = str# 文本群组 id, 用做字典的 key
 LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 
 class StaticConfig(TypedDict):
@@ -18,9 +20,9 @@ class StaticConfig(TypedDict):
     font: str                       # 生成图片验证码的字体文件路径
     active_group_id: list[ChatId]   # bot 运行的群
     debug_group_id: list[ChatId]    # bot 测试功能的群, 方便测试
-    admin_id: list[UserId]          # 管理员
+    admins_dict: dict[ChatIdStr, tuple[UserId, ...]]# 群对应的管理员
     forward_to: UserId | ChatId
-    owener_user_id: UserId          # bot 的创建者
+    owener_user_id: list[UserId]
     level: LogLevel
     help_content: str
     description: str
@@ -51,16 +53,14 @@ class StaticConfigLoader:
 
     @property
     def config(self) -> dict[str, Any]:
-        """安全获取配置字典的副本"""
-        return self._static_config.copy()
-
+        return self._static_config
 
 # 初始化配置
 try:
     static_config: StaticConfig = StaticConfigLoader().config
+    static_config.setdefault("admins_dict", {})
 except RuntimeError as e:
     print(f"load fail{e}")
-    # 终止当前程序
     exit(1)
 
 

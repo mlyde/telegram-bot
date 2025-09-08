@@ -175,7 +175,6 @@ async def sendReplyMarkup(message: Message, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = ReplyKeyboardMarkup([[button1, button2]], resize_keyboard=True, one_time_keyboard=True)
     # 创建键盘按钮
     await message.reply_text("请选择一个选项：", reply_markup=reply_markup)
-
     # 自动选中本条消息要求用户回复
     await message.reply_text("请输入一些文本：", reply_markup=ForceReply(selective=False))
 
@@ -205,8 +204,7 @@ async def sendMemberVerification(context: ContextTypes.DEFAULT_TYPE, chat: Chat,
     """向群内用户发送验证消息, 要求完成验证"""
     # 判断用户仍在群内, 避免 bot 延迟上线后对不存在的用户发送验证
     chat_member: ChatMember = await context.bot.get_chat_member(chat_id=chat.id, user_id=user.id)
-    if chat_member.status == ChatMemberStatus.MEMBER:
-
+    if chat_member.status in [ChatMemberStatus.MEMBER, ChatMemberStatus.RESTRICTED]:
         # 禁言
         await muteTime(context, chat, user)
         # 定时任务, 超时后 ban
@@ -221,12 +219,11 @@ async def sendMemberVerification(context: ContextTypes.DEFAULT_TYPE, chat: Chat,
         # 发送验证消息
         await sendCaptchaMessage(context=context, chat=chat, user=user)
 
-async def sendButtonMessage(message: Message, context: ContextTypes.DEFAULT_TYPE):
-    """向用户发出二次验证"""
-    message_sent = await message.reply_text(
-        text="请在下次发消息前完成验证",
-        reply_markup=MyInlineKeyboard.getRecaptchaMarkup(context, message.chat.id, message.id)
-    )
-
-    logSendMessageContent(message_sent, "text", False, message_sent.text_markdown_v2)
-    return message_sent
+# async def sendButtonMessage(message: Message, context: ContextTypes.DEFAULT_TYPE):
+#     """向用户发出二次验证"""
+#     message_sent = await message.reply_text(
+#         text="请在下次发消息前完成验证",
+#         reply_markup=MyInlineKeyboard.getRecaptchaMarkup(context, message.chat.id, message.id)
+#     )
+#     logSendMessageContent(message_sent, "text", False, message_sent.text_markdown_v2)
+#     return message_sent

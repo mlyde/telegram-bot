@@ -14,7 +14,7 @@ from utils.get_info import getChatInfo, getStickerInfo, getUserInfo, getMessageC
 from utils.other import getMD5
 from utils.time import last_start_up_time
 from utils.send import sendRandomStartReply
-admin_id_list: list = static_config.get("admin_id")
+admins_id_dict: list = static_config.get("admins_dict")
 help_content = static_config.get("help_content")
 
 # Commands
@@ -74,7 +74,7 @@ async def banCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
     time = 0 if context.args is None else int(context.args[0])
     logger.info(f"/ban from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date} for {time}h")
     await message.delete()
-    if message.from_user.id in admin_id_list and message.reply_to_message is not None:
+    if message.from_user.id in admins_id_dict[str(message.chat.id)] and message.reply_to_message is not None:
         await banTime(context, message.chat, message.reply_to_message.from_user, time)
 
 async def captchaCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -83,7 +83,7 @@ async def captchaCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     logger.info(f"/captcha from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
 
-    if message.from_user.id in admin_id_list:
+    if message.from_user.id in admins_id_dict[str(message.chat.id)]:
         if message.reply_to_message.from_user:
             # 标记的用户的 id
             message.reply_to_message.from_user.id
@@ -110,7 +110,7 @@ async def muteCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
     message, is_edit = getMessageContent(update)
     await message.delete()
     logger.info(f"/mute from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
-    if message.from_user.id in admin_id_list and message.reply_to_message is not None:
+    if message.from_user.id in admins_id_dict[str(message.chat.id)] and message.reply_to_message is not None:
         mute_hour = 0 if context.args is None else int(context.args[0])
 
         reply_to_user = message.reply_to_message.from_user
