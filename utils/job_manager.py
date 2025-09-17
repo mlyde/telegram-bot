@@ -39,6 +39,7 @@ async def removeVerifyJobs(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user:
     jobs = getJobsByChatAndUser(context, chat, user)
     for job in jobs:
         if job.data.get("message_id") is not None:
+            logger.debug(f"active verify job: {job}")
             await removeJobs(context, [job], execute=True)
 
 async def removeBanJobs(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: User, execute = False) -> bool:
@@ -46,4 +47,5 @@ async def removeBanJobs(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: Us
     jobs = getJobsByChatAndUser(context, chat, user)
     for job in jobs:
         if job.data.get("ban"):
+            logger.debug(f"active ban job: {job}")
             await removeJobs(context, [job], execute=execute)

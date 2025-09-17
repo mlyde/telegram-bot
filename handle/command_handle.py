@@ -8,6 +8,7 @@ from telegram.ext import ContextTypes, CallbackContext, ConversationHandler
 from telegram.constants import ChatType, ParseMode
 
 from core.static_config import static_config
+from core.database import db_user_verification
 from handle.conversation_handle import startCaptcha
 from utils.admin import banTime, muteTime
 from utils.get_info import getChatInfo, getStickerInfo, getUserInfo, getMessageContent
@@ -33,19 +34,23 @@ async def startCommand(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 async def startArgsCommand(update: Update, context: CallbackContext):
-    """携带参数的对话, deep link, 最长 64 字符
-    https://t.me/sdustbot?start=parameter"""
+    """携带参数的对话, deep link, 最长 64 字符: https://t.me/sdustbot?start=parameter"""
     message, is_edit = getMessageContent(update)
+    user = message.from_user
 
     if args := context.args:
-        logger.info(f"/start with \"{' '.join(args)}\" from {getUserInfo(message.from_user)} in {getChatInfo(message.chat)} at {message.date}")
-        # 过滤入群验证, 负数 id 为群 id
+        logger.info(f"/start with \"{' '.join(args)}\" from {getUserInfo(user)} in {getChatInfo(message.chat)} at {message.date}")
+        # 过滤入群验证参数, 群 id 为负数
         if args[0][:9]=="captcha_-":
+            # 过滤未验证用户, 已完成用户再次点击无需验证
             chat_id = int(args[0].split('_')[1])
             chat = await context.bot.get_chat(chat_id)
-            logger.info(f"{getUserInfo(message.from_user)} 发起在群组 {getChatInfo(chat)} 的验证")
-            context.user_data["chat"] = chat
-            return await startCaptcha(message, context)
+            if db_user_verification.getVerified(chat, user):
+                await message.reply_text("您已完成入群验证!")
+            else:
+                logger.info(f"{getUserInfo(user)} 发起在群组 {getChatInfo(chat)} 的验证")
+                context.user_data["chat"] = chat
+                return await startCaptcha(message, context)
         else:
             logger.debug("/start: unknown args")
 

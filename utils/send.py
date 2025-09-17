@@ -10,6 +10,7 @@ from telegram import (
 )
 from telegram.ext import ContextTypes
 from telegram.constants import ChatAction, ParseMode, ChatMemberStatus
+from telegram.helpers import escape_markdown
 
 from core.static_config import static_config
 from utils.admin import deleteMessageCallback, muteTime, banMemberDelay
@@ -180,9 +181,11 @@ async def sendReplyMarkup(message: Message, context: ContextTypes.DEFAULT_TYPE):
 
 async def sendCaptchaMessage(context: ContextTypes.DEFAULT_TYPE, chat: Chat, user: User):
     """入群验证消息"""
+    captcha_timeout = 300   # second
+    user_name = escape_markdown(user.full_name, version=2)  # 转义 markdown, 安全显示用户名
     message_sent = await context.bot.send_message(
         chat_id = chat.id,
-        text = f"{user.full_name}，请在 *5* 分钟内点击下面的按钮，回答两个问题后完成验证，否则你将被移出群组一段时间。",
+        text = f"{user_name}，请在 *{captcha_timeout // 60}* 分钟内点击下面的按钮，回答两个问题后完成验证，否则你将被移出群组一段时间。",
         reply_markup=MyInlineKeyboard.getCaptchaMarkup(context=context, chat_id=chat.id, user_id=user.id),
         parse_mode=ParseMode.MARKDOWN_V2
     )
@@ -190,7 +193,7 @@ async def sendCaptchaMessage(context: ContextTypes.DEFAULT_TYPE, chat: Chat, use
     # 定时删除任务
     context.job_queue.run_once(
         callback=deleteMessageCallback,
-        when=300,  # second
+        when=captcha_timeout,
         chat_id=chat.id,
         user_id=user.id,
         name=f"{getChatInfo(chat)}'s captcha for {getUserInfo(user)} message({message_sent.message_id}))",

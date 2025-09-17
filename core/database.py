@@ -120,7 +120,7 @@ class Database:
         return self.cursor.rowcount
 
     def getVerified(self, chat: Chat, user: User):
-        """查询是否已验证"""
+        """查询是否已验证, 返回`查询结果` 或 `False`"""
 
         logger.debug(f"database: {getUserInfo(user)} in {getChatInfo(chat)} has been verified?")
         with self.conn:
@@ -129,7 +129,8 @@ class Database:
                         (user.id, chat.id))
             result = self.cursor.fetchone()
             ret = result[0] if result else False
-            logger.debug(f"database: {getUserInfo(user)} in {getChatInfo(chat)} already verified")
+            if ret:
+                logger.debug(f"database: {getUserInfo(user)} in {getChatInfo(chat)} already verified")
             return ret
 
     def setActivity(self, chat: Chat, user: User):
