@@ -185,7 +185,7 @@ async def sendCaptchaMessage(context: ContextTypes.DEFAULT_TYPE, chat: Chat, use
     user_name = escape_markdown(user.full_name, version=2)  # 转义 markdown, 安全显示用户名
     message_sent = await context.bot.send_message(
         chat_id = chat.id,
-        text = f"{user_name}，请在 *{captcha_timeout // 60}* 分钟内点击下面的按钮，回答两个问题后完成验证，否则你将被移出群组一段时间。",
+        text = f"[{user_name}](tg://user?id={user.id}) ，请在 *{captcha_timeout // 60}* 分钟内点击下面的按钮，回答两个问题后完成验证，否则你将被移出群组一段时间。",
         reply_markup=MyInlineKeyboard.getCaptchaMarkup(context=context, chat_id=chat.id, user_id=user.id),
         parse_mode=ParseMode.MARKDOWN_V2
     )

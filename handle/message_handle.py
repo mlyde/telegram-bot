@@ -166,6 +166,9 @@ message_handlers = {
 async def forwardedHandleMessage(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """所有转发消息"""
     message = update.message
+    if message is None:
+        logger.debug("forward message is None!")
+        logger.debug(update)
     message_origin_info = getMessageOriginInfo(message.forward_origin)
 
     await checkButtonBlockContent(message, context)
